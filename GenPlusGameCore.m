@@ -29,7 +29,6 @@
 #import "OEGenesisSystemResponderClient.h"
 #import "OESegaCDSystemResponderClient.h"
 #import <OpenGL/gl.h>
-#import <OpenEmuBase/AGAGenesisLogger.h>
 #import "Scrambler.h"
 #import "NetworkManager.h"
 
@@ -220,8 +219,6 @@ static __weak GenPlusGameCore *_current;
     // Set initial viewport size because the system briefly outputs 256x192 when it boots
     bitmap.viewport.w = 320;
     bitmap.viewport.h = 224;
-
-    [[AGAGenesisLogger logger] LogString:@"LOADED!!"];
     
     return YES;
 }
@@ -238,16 +235,12 @@ static __weak GenPlusGameCore *_current;
     int samples = audio_update(soundBuffer);
     [[self ringBufferAtIndex:0] write:soundBuffer maxLength:samples << 2];
     
-    [[AGAGenesisLogger logger] LogString:@"Execute frame!!"];
-
 }
 
 - (void)resetEmulation
 {
     system_reset();
     
-    [[AGAGenesisLogger logger] LogString:@"Reset!!"];
-
 }
 
 - (void)stopEmulation
@@ -291,8 +284,6 @@ static __weak GenPlusGameCore *_current;
         bram_save();
 
     audio_shutdown();
-
-    [[AGAGenesisLogger logger] LogString:@"Stop emulation!!"];
 
     [super stopEmulation];
 }

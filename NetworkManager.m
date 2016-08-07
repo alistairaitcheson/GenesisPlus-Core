@@ -30,6 +30,9 @@
     NSString *currentpath = [GenPlusGameCore PathString];
     
     NSString *path = [currentpath stringByAppendingString:@"networksettings.txt"];
+    
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) return nil;
+    
     NSString *settingsSource = [NSString stringWithContentsOfFile:path
                                                          encoding:NSASCIIStringEncoding
                                                             error:nil];
@@ -52,6 +55,8 @@
     CFReadStreamRef readStream;
     CFWriteStreamRef writeStream;
     NSDictionary *params = [self NetworkSettings];
+    if(!params)return;
+    
     NSString *host = (params[@"ip"])? params[@"ip"] : @"localhost";
     NSString *port = (params[@"port"])? params[@"port"] : @"80";
     WriteToLog([[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port] UTF8String]);
@@ -78,8 +83,14 @@
     NSData *data = [[NSData alloc] initWithData:[response dataUsingEncoding:NSASCIIStringEncoding]];
     [self.outputStream write:[data bytes] maxLength:[data length]];
     
-    WriteToLog([[NSString stringWithFormat:@"Sent network msg: %@", response] UTF8String]);
-    WriteToLog([[NSString stringWithFormat:@"Input stream state: %@", self.inputStream] UTF8String]);
+    if (!self.outputStream) {
+        WriteToLog([[NSString stringWithFormat:@"No output stream set up - did not send: %@", response] UTF8String]);
+    }
+    else
+    {
+        WriteToLog([[NSString stringWithFormat:@"Sent network msg: %@", response] UTF8String]);
+        WriteToLog([[NSString stringWithFormat:@"Input stream state: %@", self.inputStream] UTF8String]);
+    }
 }
 
 - (void)stream:(NSStream *)theStream handleEvent:(NSStreamEvent)streamEvent {
