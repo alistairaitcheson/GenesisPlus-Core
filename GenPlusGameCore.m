@@ -1580,13 +1580,13 @@ void RAMCheatUpdate(void)
 //    work_ram[0xF764] = 0x0F;
 //    work_ram[0xF765] = 0x0F;
     
-    if (glitchTimer % 60 == 0)
-    {
-        [scrambler RequestDefsFromBackground];
-        CheckLogs();
-    }
+//    if (glitchTimer % 60 == 0)
+//    {
+//    }
     CheckForRamChanges();
-    
+    CheckLogs();
+    [scrambler RequestDefsFromBackground];
+
     
     if (shouldScramble)
     {
@@ -1643,7 +1643,7 @@ void RAMCheatUpdate(void)
 
 void CheckForRamChanges()
 {
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         for (int i = 0 ; i < 0x10000; i++) {
             if (lastWorkRam[i] != work_ram[i]) {
                 [scrambler ActivateOnCondition:[NSString stringWithFormat:@"byte_%04X", i]];
@@ -1652,7 +1652,7 @@ void CheckForRamChanges()
         for (int i = 0 ; i < 0x10000; i++) {
             lastWorkRam[i] = work_ram[i];
         }
-    });
+//    });
 }
 
 void NullAllMemory()
@@ -1811,7 +1811,7 @@ void WriteToLog(char string[])
 
 void CheckLogs()
 {
-    if (!allowLogging) return;
+    if (!allowLogging || writingLog) return;
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         writingLog = true;
