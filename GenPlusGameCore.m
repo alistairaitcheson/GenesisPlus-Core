@@ -152,6 +152,8 @@ static __weak GenPlusGameCore *_current;
     ClearLog();
     WriteToLog("init genesis");
     
+    CheckForRamChanges();
+    
 	return self;
 }
 
@@ -1563,14 +1565,7 @@ void RAMCheatUpdate(void)
 //    work_ram[0xF764] = 0x0F;
 //    work_ram[0xF765] = 0x0F;
     
-    for (int i = 0 ; i < 0x10000; i++) {
-        if (lastWorkRam[i] != work_ram[i]) {
-            [scrambler ActivateOnCondition:[NSString stringWithFormat:@"byte_%04X", i]];
-        }
-    }
-    for (int i = 0 ; i < 0x10000; i++) {
-        lastWorkRam[i] = work_ram[i];
-    }
+
     
     
     if (shouldScramble)
@@ -1580,7 +1575,7 @@ void RAMCheatUpdate(void)
     // editing the entirety of work ram is nice and seems to have the effects I wanted except it does crash the game sometimes
     
 //    WriteToLog("updating scrambler");
-    [scrambler UpdateDefinitions];
+//    [scrambler UpdateDefinitions];
 //    WriteToLog("activating ALWAYS conditions");
     [scrambler ActivateOnCondition:@"always"];
     
@@ -1616,6 +1611,21 @@ void RAMCheatUpdate(void)
     [networkManager ClearCachedMessages];
     
     ManageBackup();
+}
+
+void CheckForRamChanges()
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        for (int i = 0 ; i < 0x10000; i++) {
+            if (lastWorkRam[i] != work_ram[i]) {
+                [scrambler ActivateOnCondition:[NSString stringWithFormat:@"byte_%04X", i]];
+            }
+        }
+        for (int i = 0 ; i < 0x10000; i++) {
+            lastWorkRam[i] = work_ram[i];
+        }
+        CheckForRamChanges();
+    });
 }
 
 void NullAllMemory()
@@ -1711,6 +1721,7 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
 
 void StoreWorkRAM()
 {
+    
     WriteToLog("storing work ram");
     for (int i = 0; i < 0x10000; i++)
     {
@@ -1753,33 +1764,35 @@ void RestoreVRAM()
 
 void WriteToLog(char string[])
 {
-    if (allowLogging && [scrambler logPath])
-    {
-        FILE *testDoc = fopen([[[GenPlusGameCore PathString] stringByAppendingString:@"LOGGER_START.txt"] UTF8String], "w");
-        fclose(testDoc);
-        
-        if (![[NSFileManager defaultManager] fileExistsAtPath:[scrambler logPath]])
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        if (allowLogging && [scrambler logPath])
         {
-            [[NSFileManager defaultManager] createFileAtPath:[scrambler logPath]
-                                                    contents:nil
-                                                  attributes:nil];
+            FILE *testDoc = fopen([[[GenPlusGameCore PathString] stringByAppendingString:@"LOGGER_START.txt"] UTF8String], "w");
+            fclose(testDoc);
+            
+            if (![[NSFileManager defaultManager] fileExistsAtPath:[scrambler logPath]])
+            {
+                [[NSFileManager defaultManager] createFileAtPath:[scrambler logPath]
+                                                        contents:nil
+                                                      attributes:nil];
+            }
+            
+            NSString *text = [NSString stringWithCString:string encoding:NSASCIIStringEncoding];
+            text = [text stringByAppendingString:@"\n"];
+            
+            NSDate *date = [NSDate date];
+            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+            [formatter setDateFormat:@"%H:%M:%S"];
+            NSString *timeString = [formatter stringFromDate:date];
+            
+            text = [timeString stringByAppendingString:text];
+            
+            NSFileHandle *fileHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
+            [fileHandler seekToEndOfFile];
+            [fileHandler writeData:[text dataUsingEncoding:NSUTF8StringEncoding]];
+            [fileHandler closeFile];
         }
-        
-        NSString *text = [NSString stringWithCString:string encoding:NSASCIIStringEncoding];
-        text = [text stringByAppendingString:@"\n"];
-        
-        NSDate *date = [NSDate date];
-        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-        [formatter setDateFormat:@"%H:%M:%S"];
-        NSString *timeString = [formatter stringFromDate:date];
-        
-        text = [timeString stringByAppendingString:text];
-        
-        NSFileHandle *fileHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
-        [fileHandler seekToEndOfFile];
-        [fileHandler writeData:[text dataUsingEncoding:NSUTF8StringEncoding]];
-        [fileHandler closeFile];
-    }
+    });
 }
 
 void ClearLog()

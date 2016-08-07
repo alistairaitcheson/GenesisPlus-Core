@@ -378,9 +378,6 @@ void system_frame_gen(int do_skip)
   fifo_slots = 0;
     
     aga_liveTime ++;
-    for (int i = 0; i < 0x10000; i++) {
-        aga_loggedRam[i] = work_ram[i];
-    }
     
     if (aga_liveTime > 300)
     {
@@ -417,15 +414,6 @@ void system_frame_gen(int do_skip)
         // the method above was supposed to affect Sonic's state but just seems to
         // break the games. I think I misunderstood how to go from mappings of
         // data to where stuff is supposed to be on here
-    }
-    
-    for (int i = 0; i < 0x10000; i++) {
-        if (work_ram[i] != aga_loggedRam[i])
-        {
-            char string[80];
-            sprintf(string, "Scramble changed byte at %04x:       %04x --> %04x", i, aga_loggedRam[i], work_ram[i]);
-            WriteToLog_System(string);
-        }
     }
 
   /* check if display setings have changed during previous frame */

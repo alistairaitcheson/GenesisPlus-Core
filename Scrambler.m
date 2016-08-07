@@ -32,6 +32,11 @@
         [[NSFileManager defaultManager] createFileAtPath:[currentpath stringByAppendingString:@"here_it_is.txt"]
                                                 contents:nil
                                               attributes:nil];
+        
+        self.parameters = [NSMutableArray array];
+        
+        [self performSelectorInBackground:@selector(UpdateDefinitions)
+                               withObject:nil];
     }
     return self;
 }
@@ -48,6 +53,18 @@
         NSDictionary *dict = [self DictFromString:component];
         if (dict) [self.parameters addObject:dict];
     }
+    
+    [self performSelector:@selector(WaitForDefs)
+               withObject:nil
+               afterDelay:1.0];
+    
+
+}
+
+-(void)WaitForDefs
+{
+    [self performSelectorInBackground:@selector(UpdateDefinitions)
+                           withObject:nil];
 }
 
 -(NSDictionary*)DictFromString:(NSString*)source
