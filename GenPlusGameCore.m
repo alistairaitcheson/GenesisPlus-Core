@@ -29,6 +29,9 @@
 #import "OEGenesisSystemResponderClient.h"
 #import "OESegaCDSystemResponderClient.h"
 #import <OpenGL/gl.h>
+#import <OpenEmuBase/AGAGenesisLogger.h>
+#import "Scrambler.h"
+#import "NetworkManager.h"
 
 #include "shared.h"
 #include "scrc32.h"
@@ -85,6 +88,23 @@ static uint8_t cheatIndexes[MAX_CHEATS];
 static char ggvalidchars[] = "ABCDEFGHJKLMNPRSTVWXYZ0123456789";
 static char arvalidchars[] = "0123456789ABCDEF";
 
+static bool shouldScramble = false;
+static uint8 lastWorkRam[0x10000];
+
+static uint8 workRamHistory[0x1000][0x10000];
+static int backupTimer = 0;
+static int backupTimerPeriod = 300;
+static uint backupIndex = 0;
+
+static uint8 workRamCopy[0x10000];
+static uint8 vRamCopy[0x10000];
+static Scrambler *scrambler;
+static NetworkManager *networkManager;
+static NSString *networkUserId;
+static uint glitchTimer;
+
+static bool allowLogging = true;
+
 typedef NS_ENUM(NSInteger, MultiTapType)
 {
     MultiTapTypeNone,
@@ -120,9 +140,19 @@ static __weak GenPlusGameCore *_current;
         soundBuffer = (int16_t *)malloc(2048 * 2 * 2);
         cheatList = [[NSMutableDictionary alloc] init];
     }
+    
+    srand(time(NULL));
 
 	_current = self;
-
+    scrambler = [[Scrambler alloc] init];
+    networkUserId = [NSString stringWithFormat:@"GENESIS_%04X", (rand() % 0x10000)];
+    networkManager = [[NetworkManager alloc] init];
+    [networkManager SendMessage:networkUserId
+                     WithHeader:@"iam"];
+    
+    ClearLog();
+    WriteToLog("init genesis");
+    
 	return self;
 }
 
@@ -191,6 +221,8 @@ static __weak GenPlusGameCore *_current;
     bitmap.viewport.w = 320;
     bitmap.viewport.h = 224;
 
+    [[AGAGenesisLogger logger] LogString:@"LOADED!!"];
+    
     return YES;
 }
 
@@ -202,14 +234,20 @@ static __weak GenPlusGameCore *_current;
         system_frame_gen(0);
     else
         system_frame_sms(0);
-
+    
     int samples = audio_update(soundBuffer);
     [[self ringBufferAtIndex:0] write:soundBuffer maxLength:samples << 2];
+    
+    [[AGAGenesisLogger logger] LogString:@"Execute frame!!"];
+
 }
 
 - (void)resetEmulation
 {
     system_reset();
+    
+    [[AGAGenesisLogger logger] LogString:@"Reset!!"];
+
 }
 
 - (void)stopEmulation
@@ -253,6 +291,8 @@ static __weak GenPlusGameCore *_current;
         bram_save();
 
     audio_shutdown();
+
+    [[AGAGenesisLogger logger] LogString:@"Stop emulation!!"];
 
     [super stopEmulation];
 }
@@ -431,6 +471,35 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     {
         input.pad[(player-1) * 4] |= GenesisMap[button];
     }
+    
+    NSString *buttonStr = @"?";
+    if (GenesisMap[button] == INPUT_X) buttonStr = @"x";
+    if (GenesisMap[button] == INPUT_Y) buttonStr = @"y";
+    if (GenesisMap[button] == INPUT_Z) buttonStr = @"z";
+    if (GenesisMap[button] == INPUT_A) buttonStr = @"a";
+    if (GenesisMap[button] == INPUT_B) buttonStr = @"b";
+    if (GenesisMap[button] == INPUT_C) buttonStr = @"c";
+    if (GenesisMap[button] == INPUT_START) buttonStr = @"start";
+    if (GenesisMap[button] == INPUT_MODE) buttonStr = @"mode";
+    [scrambler ActivateOnCondition:[NSString stringWithFormat:@"press_%@", buttonStr]];
+
+//    char str[80];
+//    sprintf(str, "Should I activate scramble? %d (seeking %d)", (int)GenesisMap[button], (int)INPUT_A);
+//    WriteToLog(str);
+    if (GenesisMap[button] == INPUT_X) {
+        WriteToLog("Activating scramble");
+        shouldScramble = true;
+    }
+    if (GenesisMap[button] == INPUT_Y) {
+//        StoreWorkRAM();
+//        StoreVRAM();
+    }
+    if (GenesisMap[button] == INPUT_Z) {
+        LoadFromBackup();
+
+//        RestoreWorkRAM();
+//        RestoreVRAM();
+    }
 }
 
 - (oneway void)didReleaseGenesisButton:(OEGenesisButton)button forPlayer:(NSUInteger)player;
@@ -446,6 +515,11 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     }
     else
         input.pad[(player-1) * 4] &= ~GenesisMap[button];
+
+    if (GenesisMap[button] == INPUT_X) {
+        WriteToLog("Deactivating scramble");
+        shouldScramble = false;
+    }
 }
 
 - (oneway void)didPushSegaCDButton:(OESegaCDButton)button forPlayer:(NSUInteger)player;
@@ -1443,6 +1517,12 @@ static void remove_cheats(void)
  * Apply RAM patches (this should be called once per frame)
  *
  ****************************************************************************/
+
+
+static int lastRingCount = 0;
+static int lastRingUpdated = 0;
+
+
 void RAMCheatUpdate(void)
 {
     int index, cnt = maxRAMcheats;
@@ -1465,6 +1545,340 @@ void RAMCheatUpdate(void)
             work_ram[cheatlist[index].address & 0xFFFF] = cheatlist[index].data;
         }
     }
+    
+//    int ringCount = work_ram[0xFE20];
+//    int ringUpdated = work_ram[0xFE1D];
+//    
+//    if (ringCount != lastRingCount || ringUpdated != lastRingUpdated)
+//    {
+//        char string[80];
+//        sprintf(string, "RINGS: %04x ---> %04x, RING_UPDATE: %04x ---> %04x", lastRingCount, ringCount, lastRingUpdated, ringUpdated);
+//        WriteToLog(string);
+//        for (int i = 0; i < 5; i++) {
+////            ScrambleByte();
+//        }
+//        
+//        lastRingCount = ringCount;
+//        lastRingUpdated = ringUpdated;
+//    }
+    
+    //top speed
+//    work_ram[0xF760] = 0x0F;
+//    work_ram[0xF761] = 0x0F;
+    //acceleration
+//    work_ram[0xF762] = 0x0F;
+//    work_ram[0xF763] = 0x0F;
+    //deceleration
+//    work_ram[0xF764] = 0x0F;
+//    work_ram[0xF765] = 0x0F;
+    
+    for (int i = 0 ; i < 0x10000; i++) {
+        if (lastWorkRam[i] != work_ram[i]) {
+            [scrambler ActivateOnCondition:[NSString stringWithFormat:@"byte_%04X", i]];
+        }
+    }
+    for (int i = 0 ; i < 0x10000; i++) {
+        lastWorkRam[i] = work_ram[i];
+    }
+    
+    
+    if (shouldScramble)
+    {
+        ScrambleByte();
+    }
+    // editing the entirety of work ram is nice and seems to have the effects I wanted except it does crash the game sometimes
+    
+//    WriteToLog("updating scrambler");
+    [scrambler UpdateDefinitions];
+//    WriteToLog("activating ALWAYS conditions");
+    [scrambler ActivateOnCondition:@"always"];
+    
+    glitchTimer ++;
+    [scrambler ActivateOnCondition:[NSString stringWithFormat:@"timer_%i", (int)glitchTimer]];
+    
+    NSArray *networkMessages = [networkManager GetCachedMessages];
+    for (NSString *myMessage in networkMessages) {
+        NSString *noBreaks = [myMessage stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+        noBreaks = [noBreaks stringByReplacingOccurrencesOfString:@"\r" withString:@""];
+        NSArray *components = [noBreaks componentsSeparatedByString:@">"];
+        if ([components count] >= 3) {
+            NSString *sender = components[0];
+            NSString *type = components[1];
+            NSString *msg = components[2];
+            
+            if (![sender isEqualToString:networkUserId]) {
+                if ([type isEqualToString:@"scramble"]) {
+                    WriteToLog([[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender] UTF8String]);
+                    [scrambler ActivateOnCondition:[NSString stringWithFormat:@"network_%@", msg]];
+                }
+            }
+            else
+            {
+                WriteToLog([[NSString stringWithFormat:@"Will not action message sent by self: %@", myMessage] UTF8String]);
+            }
+        }
+        else
+        {
+            WriteToLog([[NSString stringWithFormat:@"Could not action message: %@", myMessage] UTF8String]);
+        }
+    }
+    [networkManager ClearCachedMessages];
+    
+    ManageBackup();
+}
+
+void NullAllMemory()
+{
+    for (int i = 0; i < 0xFFFF; i++) {
+        work_ram[i] = 0;
+    }
+}
+
+void ScrambleByte()
+{
+//    ScrambleByteWithRange(0, 0xFFFF, 0, 0xFF, 0);
+}
+
+void SetByteOnMem(uint whichByte, uint newValue, uint whichMem)
+{
+    char string[80];
+    sprintf(string, "Setting byte at %04x to value %04x (in memory %d)", whichByte, newValue, whichMem);
+    WriteToLog(string);
+    
+    if (whichMem == 0)
+        work_ram[whichByte] = newValue;
+    if (whichMem == 1)
+        vdp_write_byte(whichByte, newValue);
+    if (whichMem == 2)
+        z80_memory_w(whichByte, newValue);
+    if (whichMem == 3)
+        cart.rom[whichByte % cart.romsize] = newValue;
+}
+
+void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record)
+{
+    if (min > max || minV > maxV){
+        WriteToLog("Cannot scramble as start > end or min > max");
+        return;
+    }
+    
+    int target = min + (rand() % (max - min + 1));//0xF762 + (rand() % 0x0002); //(rand() % 0xFFFF); // technically we're scrambling values from #FF0000 to #FFFFFF, but work ram just looks at those values we care about
+    int value = minV + (rand() % (maxV - minV + 1));
+    
+    char string[80];
+    sprintf(string, "Scrambling byte at %04x to value %04x (in memory %d)", target, value, whichMem);
+    WriteToLog(string);
+    if (whichMem == 0){
+        if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
+        work_ram[target] = value;
+    }
+    if (whichMem == 1){
+//        if (record) [scrambler RegisterInHistory_Addr:target Was:vdp_read_byte(target) Became:value OnMem:whichMem];
+        vdp_write_byte(target, value);
+    }
+    if (whichMem == 2){
+        if (record) [scrambler RegisterInHistory_Addr:target Was:z80_memory_r(target) Became:value OnMem:whichMem];
+        z80_memory_w(target, value);
+    }
+    if (whichMem == 3){
+        if (record) [scrambler RegisterInHistory_Addr:target Was:cart.rom[target % cart.romsize] Became:value OnMem:whichMem];
+        cart.rom[target % cart.romsize] = value;
+    }
+}
+
+void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record)
+{
+    if (min > max || minV > maxV){
+        WriteToLog("Cannot increment as start > end or min > max");
+        return;
+    }
+    
+    int target = min + (rand() % (max - min + 1));//0xF762 + (rand() % 0x0002); //(rand() % 0xFFFF); // technically we're scrambling values from #FF0000 to #FFFFFF, but work ram just looks at those values we care about
+    int value = minV + (rand() % (maxV - minV + 1));
+    
+    
+    char string[80];
+    sprintf(string, "Incrementing byte at %04x by value %04x (in memory %d)", target, value, whichMem);
+    WriteToLog(string);
+    if (whichMem == 0){
+        if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
+        work_ram[target] = (work_ram[target] + value) % 0x100;
+    }
+    if (whichMem == 1){
+//        if (record) [scrambler RegisterInHistory_Addr:target Was:vdp_read_byte(target) Became:value OnMem:whichMem];
+        vdp_write_byte(target, (vdp_read_byte(target) + value) % 0x100);
+    }
+    if (whichMem == 2){
+        if (record) [scrambler RegisterInHistory_Addr:target Was:z80_memory_r(target) Became:value OnMem:whichMem];
+        z80_memory_w(target, (z80_memory_r(target) + value) % 0x100);
+    }
+    if (whichMem == 3){
+        if (record) [scrambler RegisterInHistory_Addr:target Was:cart.rom[target % cart.romsize] Became:value OnMem:whichMem];
+        cart.rom[target % cart.romsize] = (cart.rom[target % cart.romsize] + value) % 0x100;
+    }
+}
+
+void StoreWorkRAM()
+{
+    WriteToLog("storing work ram");
+    for (int i = 0; i < 0x10000; i++)
+    {
+        workRamCopy[i] = work_ram[i];
+    }
+    WriteToLog("stored work ram");
+}
+
+void RestoreWorkRAM()
+{
+    WriteToLog("restoring work ram");
+    for (int i = 0; i < 0x10000; i++)
+    {
+        work_ram[i] = workRamCopy[i];
+    }
+    WriteToLog("restored work ram");
+
+}
+
+void StoreVRAM()
+{
+    WriteToLog("storing Vram");
+    for (int i = 0; i < 0x10000; i++)
+    {
+        vRamCopy[i] = vram[i];
+    }
+    WriteToLog("stored Vram");
+}
+
+void RestoreVRAM()
+{
+    WriteToLog("restoring Vram");
+    for (int i = 0; i < 0x10000; i++)
+    {
+        vram[i] = vRamCopy[i];
+    }
+    WriteToLog("restored Vram");
+    
+}
+
+void WriteToLog(char string[])
+{
+    if (allowLogging && [scrambler logPath])
+    {
+        FILE *testDoc = fopen([[[GenPlusGameCore PathString] stringByAppendingString:@"LOGGER_START.txt"] UTF8String], "w");
+        fclose(testDoc);
+        
+        if (![[NSFileManager defaultManager] fileExistsAtPath:[scrambler logPath]])
+        {
+            [[NSFileManager defaultManager] createFileAtPath:[scrambler logPath]
+                                                    contents:nil
+                                                  attributes:nil];
+        }
+        
+        NSString *text = [NSString stringWithCString:string encoding:NSASCIIStringEncoding];
+        text = [text stringByAppendingString:@"\n"];
+        
+        NSDate *date = [NSDate date];
+        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        [formatter setDateFormat:@"%H:%M:%S"];
+        NSString *timeString = [formatter stringFromDate:date];
+        
+        text = [timeString stringByAppendingString:text];
+        
+        NSFileHandle *fileHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
+        [fileHandler seekToEndOfFile];
+        [fileHandler writeData:[text dataUsingEncoding:NSUTF8StringEncoding]];
+        [fileHandler closeFile];
+    }
+}
+
+void ClearLog()
+{
+    if (allowLogging && [scrambler logPath])
+    {
+        if (![[NSFileManager defaultManager] fileExistsAtPath:[scrambler logPath]])
+        {
+            [[NSFileManager defaultManager] createFileAtPath:[scrambler logPath]
+                                                    contents:nil
+                                                  attributes:nil];
+        }
+        
+        [@"" writeToFile:[scrambler logPath]
+              atomically:NO
+                encoding:NSASCIIStringEncoding
+                   error:nil];
+    }
+}
+
+void ManageBackup()
+{
+    
+    backupTimer ++;
+    if (backupTimer >= backupTimerPeriod)
+    {
+        char log[80];
+        sprintf(log, "Backing up index %04X", backupIndex);
+        WriteToLog(log);
+
+        for (int k = 0; k < 0x10000; k++) {
+            workRamHistory[backupIndex][k] = work_ram[k];
+        }
+        
+        backupIndex ++;
+        backupIndex %= 0x1000;
+        backupTimer = 0;
+    }
+}
+
+void LoadFromBackup()
+{
+    char log[80];
+    sprintf(log, "loading backup from index %04X", backupIndex);
+    WriteToLog(log);
+    
+    for (int k = 0; k < 0x10000; k++) {
+        work_ram[k] = workRamHistory[backupIndex - 1][k];
+    }
+    
+    backupIndex --;
+    backupIndex %= 0x1000;
+    backupTimer = 0;
+
+}
+
+void SendNetworkEvent(char str[])
+{
+    [networkManager SendMessage:[NSString stringWithCString:str encoding:NSASCIIStringEncoding]
+                     WithHeader:@"scramble"];
+}
+
++(NSString*)PathString
+{
+//    NSString *currentpath = [[NSBundle mainBundle] bundlePath];
+//    currentpath = [currentpath componentsSeparatedByString:@"OpenEmu.app"][0];
+//    if (![currentpath hasSuffix:@"/"]) {
+//        currentpath = [currentpath stringByAppendingString:@"/"];
+//    }
+////    if (![currentpath hasPrefix:@"~"])
+////    {
+////        currentpath = [@"~" stringByAppendingString:currentpath];
+////    }
+//    return currentpath;
+    NSString *currentpath = @"~/Library/Application Support/OpenEmu/AGA/";
+    currentpath = [currentpath stringByExpandingTildeInPath];
+    
+    if (![[NSFileManager defaultManager] fileExistsAtPath:currentpath])
+    {
+        [[NSFileManager defaultManager] createDirectoryAtPath:currentpath
+                                  withIntermediateDirectories:YES
+                                                   attributes:nil
+                                                        error:nil];
+    }
+    if (![currentpath hasSuffix:@"/"])
+    {
+        currentpath = [currentpath stringByAppendingString:@"/"];
+    }
+    
+    return currentpath;
 }
 
 @end

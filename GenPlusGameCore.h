@@ -31,4 +31,13 @@
 
 OE_EXPORTED_CLASS
 @interface GenPlusGameCore : OEGameCore
+
+void SetByteOnMem(uint whichByte, uint newValue, uint whichMem);
+void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record);
+void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record);
+void WriteToLog(char string[]);
+void SendNetworkEvent(char str[]);
+
++(NSString*)PathString;
+
 @end

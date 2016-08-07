@@ -42,6 +42,10 @@
 #include "shared.h"
 #include "eq.h"
 
+#include <fcntl.h>
+#include <asl.h>
+#include <unistd.h>
+
 /* Global variables */
 t_bitmap bitmap;
 t_snd snd;
@@ -54,6 +58,9 @@ int16 SVP_cycles = 800;
 static uint8 pause_b;
 static EQSTATE eq;
 static int16 llp,rrp;
+
+static uint aga_liveTime;
+static uint8 aga_loggedRam[0x10000];
 
 /******************************************************************************************/
 /* Audio subsystem                                                                        */
@@ -336,6 +343,8 @@ void system_init(void)
   vdp_init();
   render_init();
   sound_init();
+    
+    srand(time(NULL));
 }
 
 void system_reset(void)
@@ -348,6 +357,14 @@ void system_reset(void)
   audio_reset();
 }
 
+void WriteToLog_System(char string[])
+{
+//    FILE *file = fopen("GenesisLogALT.txt", "a");
+//    fprintf(file, "%i - %s\n", rand() % 1000, string);
+//    fclose(file);
+}
+
+
 void system_frame_gen(int do_skip)
 {
   /* line counters */
@@ -359,6 +376,57 @@ void system_frame_gen(int do_skip)
   /* reset VDP FIFO */
   fifo_write_cnt = 0;
   fifo_slots = 0;
+    
+    aga_liveTime ++;
+    for (int i = 0; i < 0x10000; i++) {
+        aga_loggedRam[i] = work_ram[i];
+    }
+    
+    if (aga_liveTime > 300)
+    {
+        // for sound output: 0x4000 + (rand() % 0x2000), rand() % 0xFF
+//        z80_memory_w(0x4000 + (rand() % 0x2000), rand() % 0xFF); // will this glitch audio? See the method definition!!
+        
+//        int graphicsIndex = rand() % 0xFFFF;
+//        int valueToChange = rand() % 0xFF;
+//        vdp_write_byte(graphicsIndex, valueToChange); // <-- graphics garbling!! :D
+        
+//        FILE *file = fopen("GenesisLog.txt", "a");
+//        fprintf(file, "Wrote value %d to index %d\n", valueToChange, graphicsIndex);
+//        fclose(file);
+//        the method above scrambles a random value in VRAM
+        
+//        uint location = rand() % 0x100; //rand() % 0xff;//0xe0 + (rand() % (0xff - 0xe0)); // try just 0xee
+//        uint address = rand() % 0x100;
+//        uint value = rand() % 0x100;
+//        WRITE_BYTE(m68k.memory_map[location].base, address, value);
+//        char string[80];
+//        sprintf(string, "Scrambled BASE, ADDR     %02x %02x         to get %04x", location, address, value);
+//        WriteToLog_System(string);
+        
+        // the method above chooses random values in RAM and borks them. It has different effect
+        // in each game but doesn't seem to bork Sonic 2
+        
+//        uint location = 0xB0; //0xf6; //A10008 - A10009 = controller port 1
+//        uint num = 0x00;
+//        WRITE_BYTE(m68k.memory_map[location].base, num, rand() % 256);
+//        if (m68k.memory_map[location].write16)
+//        {
+//            m68k.memory_map[location].write16(rand() % 256, rand() % 256);
+//        }
+        // the method above was supposed to affect Sonic's state but just seems to
+        // break the games. I think I misunderstood how to go from mappings of
+        // data to where stuff is supposed to be on here
+    }
+    
+    for (int i = 0; i < 0x10000; i++) {
+        if (work_ram[i] != aga_loggedRam[i])
+        {
+            char string[80];
+            sprintf(string, "Scramble changed byte at %04x:       %04x --> %04x", i, aga_loggedRam[i], work_ram[i]);
+            WriteToLog_System(string);
+        }
+    }
 
   /* check if display setings have changed during previous frame */
   if (bitmap.viewport.changed & 2)

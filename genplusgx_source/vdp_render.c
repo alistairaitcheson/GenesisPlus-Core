@@ -17,7 +17,7 @@
  *     complete source code, including the source code for all components used by a
  *     binary built from the modified sources. However, as a special exception, the
  *     source code distributed need not include anything that is normally distributed
- *     (in either source or binary form) with the major components (compiler, kernel,
+ *     (in either source or binary form) with the major components (compiler, kernel,ra
  *     and so on) of the operating system on which the executable runs, unless that
  *     component itself accompanies the executable.
  *
@@ -42,6 +42,8 @@
 #include "shared.h"
 #include "md_ntsc.h"
 #include "sms_ntsc.h"
+#include <stdlib.h>
+#include <time.h>
 
 /*** NTSC Filters ***/
 extern md_ntsc_t *md_ntsc;
@@ -416,7 +418,7 @@ INLINE void WRITE_LONG(void *address, uint32 data)
     if (temp & 0x0f) \
     { \
       temp |= (lb[i] << 8); \
-      lb[i] = TABLE[temp | ATTR]; \
+      lb[i] = TABLE[temp | ATTR ]; \
       status |= ((temp & 0x8000) >> 10); \
     } \
   }

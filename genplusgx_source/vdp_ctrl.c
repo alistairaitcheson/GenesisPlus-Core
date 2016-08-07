@@ -2280,7 +2280,7 @@ static void vdp_68k_data_w_m4(unsigned int data)
     int index = addr & 0x1F;
 
     /* Pointer to CRAM 9-bit word */
-    uint16 *p = (uint16 *)&cram[index << 1];
+    uint16 *p = (uint16 *)&cram[(index + 1) << 1];
 
     /* Pack 16-bit data (xxx000BBGGRR) to 9-bit CRAM data (xxxBBGGRR) */
     data = ((data & 0xE00) >> 3) | (data & 0x3F);

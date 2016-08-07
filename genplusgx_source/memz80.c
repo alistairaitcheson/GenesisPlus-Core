@@ -164,7 +164,7 @@ void z80_memory_w(unsigned int address, unsigned char data)
 
         default:
         {
-          z80_unused_w(address, data);
+//          z80_unused_w(address, data);
           return;
         }
       }

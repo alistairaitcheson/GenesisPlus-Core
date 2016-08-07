@@ -39,6 +39,7 @@
 
 #include "shared.h"
 
+
 /*--------------------------------------------------------------------------*/
 /* Unused areas (return open bus data, i.e prefetched instruction word)     */
 /*--------------------------------------------------------------------------*/
@@ -1090,6 +1091,7 @@ void ctrl_io_write_word(unsigned int address, unsigned int data)
 
 unsigned int vdp_read_byte(unsigned int address)
 {
+    
   switch (address & 0xFD)
   {
     case 0x00:  /* DATA */
@@ -1208,13 +1210,13 @@ void vdp_write_byte(unsigned int address, unsigned int data)
         SN76489_Write(m68k.cycles, data);
         return;
       }
-      m68k_unused_8_w(address, data);
+//      m68k_unused_8_w(address, data);
       return;
     }
 
     case 0x18: /* Unused */
     {
-      m68k_unused_8_w(address, data);
+//      m68k_unused_8_w(address, data);
       return;
     }
 
@@ -1226,7 +1228,7 @@ void vdp_write_byte(unsigned int address, unsigned int data)
 
     default:  /* Invalid address */
     {
-      m68k_lockup_w_8(address, data);
+//      m68k_lockup_w_8(address, data);
       return;
     }
   }

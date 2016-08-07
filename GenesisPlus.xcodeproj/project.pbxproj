@@ -35,6 +35,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		3E4E2CEE1D54C33500A9AAE9 /* NetworkManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 3E4E2CED1D54C33500A9AAE9 /* NetworkManager.m */; };
+		3E5F62C01D4B8CAF00A78724 /* Scrambler.m in Sources */ = {isa = PBXBuildFile; fileRef = 3E5F62BF1D4B8CAF00A78724 /* Scrambler.m */; };
 		82287C39101E9DB40072172D /* GenPlusGameCore.m in Sources */ = {isa = PBXBuildFile; fileRef = 82287C34101E9DB40072172D /* GenPlusGameCore.m */; };
 		879243AE1C0D044B0064C515 /* xe_1ap.c in Sources */ = {isa = PBXBuildFile; fileRef = 879243AC1C0D044B0064C515 /* xe_1ap.c */; };
 		879243B11C0D05120064C515 /* graphic_board.c in Sources */ = {isa = PBXBuildFile; fileRef = 879243AF1C0D05120064C515 /* graphic_board.c */; };
@@ -130,6 +132,10 @@
 		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		089C167FFE841241C02AAC07 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
+		3E4E2CEC1D54C33500A9AAE9 /* NetworkManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkManager.h; sourceTree = "<group>"; };
+		3E4E2CED1D54C33500A9AAE9 /* NetworkManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NetworkManager.m; sourceTree = "<group>"; };
+		3E5F62BE1D4B8CAF00A78724 /* Scrambler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Scrambler.h; sourceTree = "<group>"; };
+		3E5F62BF1D4B8CAF00A78724 /* Scrambler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Scrambler.m; sourceTree = "<group>"; };
 		82287C08101E9C2C0072172D /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
 		82287C33101E9DB40072172D /* GenPlusGameCore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GenPlusGameCore.h; sourceTree = "<group>"; };
 		82287C34101E9DB40072172D /* GenPlusGameCore.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GenPlusGameCore.m; sourceTree = "<group>"; };
@@ -314,6 +320,10 @@
 				946C18AE17148D5200C64BF9 /* OESegaCDSystemResponderClient.h */,
 				82287C33101E9DB40072172D /* GenPlusGameCore.h */,
 				82287C34101E9DB40072172D /* GenPlusGameCore.m */,
+				3E5F62BE1D4B8CAF00A78724 /* Scrambler.h */,
+				3E5F62BF1D4B8CAF00A78724 /* Scrambler.m */,
+				3E4E2CEC1D54C33500A9AAE9 /* NetworkManager.h */,
+				3E4E2CED1D54C33500A9AAE9 /* NetworkManager.m */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -636,6 +646,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				82287C39101E9DB40072172D /* GenPlusGameCore.m in Sources */,
+				3E5F62C01D4B8CAF00A78724 /* Scrambler.m in Sources */,
 				879243B11C0D05120064C515 /* graphic_board.c in Sources */,
 				94ED8A9214CF933700FF8901 /* areplay.c in Sources */,
 				94ED8A9414CF933700FF8901 /* ggenie.c in Sources */,
@@ -662,6 +673,7 @@
 				94ED8A9C14CF933700FF8901 /* genesis.c in Sources */,
 				94ED8B2314CF933800FF8901 /* io_ctrl.c in Sources */,
 				94ED8B2414CF933800FF8901 /* loadrom.c in Sources */,
+				3E4E2CEE1D54C33500A9AAE9 /* NetworkManager.m in Sources */,
 				879243AE1C0D044B0064C515 /* xe_1ap.c in Sources */,
 				94ED8B2814CF933800FF8901 /* mem68k.c in Sources */,
 				94ED8B2914CF933800FF8901 /* membnk.c in Sources */,
@@ -721,6 +733,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
@@ -767,7 +780,8 @@
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				DEAD_CODE_STRIPPING = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = NO;
