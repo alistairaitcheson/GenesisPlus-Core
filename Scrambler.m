@@ -35,7 +35,7 @@
         
         self.parameters = [NSMutableArray array];
         
-        [self performSelectorInBackground:@selector(UpdateDefinitions)
+        [self performSelectorInBackground:@selector(RequestDefsFromBackground)
                                withObject:nil];
     }
     return self;
@@ -54,14 +54,11 @@
         if (dict) [self.parameters addObject:dict];
     }
     
-    [self performSelector:@selector(WaitForDefs)
-               withObject:nil
-               afterDelay:1.0];
-    
+    WriteToLog("got parameters");
 
 }
 
--(void)WaitForDefs
+-(void)RequestDefsFromBackground
 {
     [self performSelectorInBackground:@selector(UpdateDefinitions)
                            withObject:nil];

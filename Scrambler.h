@@ -21,5 +21,6 @@
 -(void)ActivateOnCondition:(NSString*)condition;
 -(uint)uIntFromNSString:(NSString*)string;
 -(void)RegisterInHistory_Addr:(uint)addr Was:(uint)was Became:(uint)became OnMem:(int)onMem;
+-(void)RequestDefsFromBackground;
 
 @end

@@ -15,9 +15,11 @@
 @property (nonatomic, strong) NSInputStream *inputStream;
 @property (nonatomic, strong) NSOutputStream *outputStream;
 @property (nonatomic, strong) NSMutableArray *cachedMessages;
+@property (nonatomic, strong) NSString *startTime;
 
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header;
 -(NSArray*)GetCachedMessages;
 -(void)ClearCachedMessages;
+-(NSString*)timeStampAsNumber;
 
 @end

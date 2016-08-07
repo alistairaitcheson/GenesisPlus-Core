@@ -19,6 +19,8 @@
         self.cachedMessages = [NSMutableArray array];
         [self initNetworkCommunication];
         
+        self.startTime = [self timeStampAsNumber];
+        
         FILE *testDoc = fopen([[[GenPlusGameCore PathString] stringByAppendingString:@"NETWORK_START.txt"] UTF8String], "w");
         fclose(testDoc);
     }
@@ -79,7 +81,7 @@
 
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header
 {
-    NSString *response  = [NSString stringWithFormat:@"%@>%@", header, message];
+    NSString *response  = [NSString stringWithFormat:@"%@>%@>%@", header, message, [self timeStampAsNumber]];
     NSData *data = [[NSData alloc] initWithData:[response dataUsingEncoding:NSASCIIStringEncoding]];
     [self.outputStream write:[data bytes] maxLength:[data length]];
     
@@ -144,6 +146,15 @@
 -(void)ClearCachedMessages
 {
     [self.cachedMessages removeAllObjects];
+}
+
+-(NSString*)timeStampAsNumber
+{
+    NSDate *date = [NSDate date];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"yyyyMMHHmmss"];
+    NSString *timeString = [formatter stringFromDate:date];
+    return timeString;
 }
 
 

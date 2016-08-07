@@ -99,10 +99,12 @@ static uint8 workRamCopy[0x10000];
 static uint8 vRamCopy[0x10000];
 static Scrambler *scrambler;
 static NetworkManager *networkManager;
+static NSMutableArray *waitingLogs;
 static NSString *networkUserId;
 static uint glitchTimer;
 
 static bool allowLogging = true;
+static bool writingLog = false;
 
 typedef NS_ENUM(NSInteger, MultiTapType)
 {
@@ -142,12 +144,23 @@ static __weak GenPlusGameCore *_current;
     
     srand(time(NULL));
 
+    waitingLogs = [NSMutableArray array];
+    
 	_current = self;
     scrambler = [[Scrambler alloc] init];
     networkUserId = [NSString stringWithFormat:@"GENESIS_%04X", (rand() % 0x10000)];
     networkManager = [[NetworkManager alloc] init];
     [networkManager SendMessage:networkUserId
                      WithHeader:@"iam"];
+ 
+    NSString *shouldLogPath = [[GenPlusGameCore PathString] stringByAppendingString:@"logsettings.txt"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:shouldLogPath])
+    {
+        NSString *settingsSource = [NSString stringWithContentsOfFile:shouldLogPath
+                                                             encoding:NSASCIIStringEncoding
+                                                                error:nil];
+        allowLogging = [settingsSource isEqualToString:@"allow:yes"];
+    }
     
     ClearLog();
     WriteToLog("init genesis");
@@ -474,7 +487,9 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     if (GenesisMap[button] == INPUT_C) buttonStr = @"c";
     if (GenesisMap[button] == INPUT_START) buttonStr = @"start";
     if (GenesisMap[button] == INPUT_MODE) buttonStr = @"mode";
-    [scrambler ActivateOnCondition:[NSString stringWithFormat:@"press_%@", buttonStr]];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        [scrambler ActivateOnCondition:[NSString stringWithFormat:@"press_%@", buttonStr]];
+    });
 
 //    char str[80];
 //    sprintf(str, "Should I activate scramble? %d (seeking %d)", (int)GenesisMap[button], (int)INPUT_A);
@@ -1565,7 +1580,12 @@ void RAMCheatUpdate(void)
 //    work_ram[0xF764] = 0x0F;
 //    work_ram[0xF765] = 0x0F;
     
-
+    if (glitchTimer % 60 == 0)
+    {
+        [scrambler RequestDefsFromBackground];
+        CheckLogs();
+    }
+    CheckForRamChanges();
     
     
     if (shouldScramble)
@@ -1588,10 +1608,16 @@ void RAMCheatUpdate(void)
             NSString *noBreaks = [myMessage stringByReplacingOccurrencesOfString:@"\n" withString:@""];
             noBreaks = [noBreaks stringByReplacingOccurrencesOfString:@"\r" withString:@""];
             NSArray *components = [noBreaks componentsSeparatedByString:@">"];
-            if ([components count] >= 3) {
+            if ([components count] >= 4) {
                 NSString *sender = components[0];
                 NSString *type = components[1];
                 NSString *msg = components[2];
+                NSString *timeStamp = components[3];
+                if ([timeStamp intValue] < [[networkManager timeStampAsNumber] intValue])
+                {
+                    WriteToLog([[NSString stringWithFormat:@"Will not action message sent prior to start: %@", myMessage] UTF8String]);
+                    continue;
+                }
                 
                 if (![sender isEqualToString:networkUserId]) {
                     if ([type isEqualToString:@"scramble"]) {
@@ -1626,7 +1652,6 @@ void CheckForRamChanges()
         for (int i = 0 ; i < 0x10000; i++) {
             lastWorkRam[i] = work_ram[i];
         }
-        CheckForRamChanges();
     });
 }
 
@@ -1769,9 +1794,33 @@ void RestoreVRAM()
 
 void WriteToLog(char string[])
 {
+    if (!allowLogging) return;
+    
+    NSString *text = [NSString stringWithCString:string encoding:NSASCIIStringEncoding];
+    text = [text stringByAppendingString:@"\n"];
+    
+    NSDate *date = [NSDate date];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"HH:mm:SS"];
+    NSString *timeString = [formatter stringFromDate:date];
+    
+    text = [timeString stringByAppendingString:text];
+    
+    [waitingLogs addObject:text];
+}
+
+void CheckLogs()
+{
+    if (!allowLogging) return;
+
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        writingLog = true;
         if (allowLogging && [scrambler logPath])
         {
+            NSString *text = @"";
+            for (int i = 0; i < [waitingLogs count]; i++) {
+                text = [text stringByAppendingString:waitingLogs[i]];
+            }
             FILE *testDoc = fopen([[[GenPlusGameCore PathString] stringByAppendingString:@"LOGGER_START.txt"] UTF8String], "w");
             fclose(testDoc);
             
@@ -1782,20 +1831,12 @@ void WriteToLog(char string[])
                                                       attributes:nil];
             }
             
-            NSString *text = [NSString stringWithCString:string encoding:NSASCIIStringEncoding];
-            text = [text stringByAppendingString:@"\n"];
-            
-            NSDate *date = [NSDate date];
-            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-            [formatter setDateFormat:@"%H:%M:%S"];
-            NSString *timeString = [formatter stringFromDate:date];
-            
-            text = [timeString stringByAppendingString:text];
-            
             NSFileHandle *fileHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
             [fileHandler seekToEndOfFile];
-            [fileHandler writeData:[text dataUsingEncoding:NSUTF8StringEncoding]];
+            [fileHandler writeData:[text dataUsingEncoding:NSASCIIStringEncoding]];
             [fileHandler closeFile];
+            
+            [waitingLogs removeAllObjects];
         }
     });
 }
@@ -1824,17 +1865,19 @@ void ManageBackup()
     backupTimer ++;
     if (backupTimer >= backupTimerPeriod)
     {
-        char log[80];
-        sprintf(log, "Backing up index %04X", backupIndex);
-        WriteToLog(log);
-
-        for (int k = 0; k < 0x10000; k++) {
-            workRamHistory[backupIndex][k] = work_ram[k];
-        }
-        
-        backupIndex ++;
-        backupIndex %= 0x1000;
         backupTimer = 0;
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+            char log[80];
+            sprintf(log, "Backing up index %04X", backupIndex);
+            WriteToLog(log);
+
+            for (int k = 0; k < 0x10000; k++) {
+                workRamHistory[backupIndex][k] = work_ram[k];
+            }
+            
+            backupIndex ++;
+            backupIndex %= 0x1000;
+        });
     }
 }
 
@@ -1856,8 +1899,10 @@ void LoadFromBackup()
 
 void SendNetworkEvent(char str[])
 {
-    [networkManager SendMessage:[NSString stringWithCString:str encoding:NSASCIIStringEncoding]
-                     WithHeader:@"scramble"];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        [networkManager SendMessage:[NSString stringWithCString:str encoding:NSASCIIStringEncoding]
+                         WithHeader:@"scramble"];
+    });
 }
 
 +(NSString*)PathString
