@@ -1577,38 +1577,40 @@ void RAMCheatUpdate(void)
 //    WriteToLog("updating scrambler");
 //    [scrambler UpdateDefinitions];
 //    WriteToLog("activating ALWAYS conditions");
-    [scrambler ActivateOnCondition:@"always"];
-    
     glitchTimer ++;
-    [scrambler ActivateOnCondition:[NSString stringWithFormat:@"timer_%i", (int)glitchTimer]];
-    
-    NSArray *networkMessages = [networkManager GetCachedMessages];
-    for (NSString *myMessage in networkMessages) {
-        NSString *noBreaks = [myMessage stringByReplacingOccurrencesOfString:@"\n" withString:@""];
-        noBreaks = [noBreaks stringByReplacingOccurrencesOfString:@"\r" withString:@""];
-        NSArray *components = [noBreaks componentsSeparatedByString:@">"];
-        if ([components count] >= 3) {
-            NSString *sender = components[0];
-            NSString *type = components[1];
-            NSString *msg = components[2];
-            
-            if (![sender isEqualToString:networkUserId]) {
-                if ([type isEqualToString:@"scramble"]) {
-                    WriteToLog([[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender] UTF8String]);
-                    [scrambler ActivateOnCondition:[NSString stringWithFormat:@"network_%@", msg]];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        [scrambler ActivateOnCondition:@"always"];
+        
+        [scrambler ActivateOnCondition:[NSString stringWithFormat:@"timer_%i", (int)glitchTimer]];
+        
+        NSArray *networkMessages = [networkManager GetCachedMessages];
+        for (NSString *myMessage in networkMessages) {
+            NSString *noBreaks = [myMessage stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+            noBreaks = [noBreaks stringByReplacingOccurrencesOfString:@"\r" withString:@""];
+            NSArray *components = [noBreaks componentsSeparatedByString:@">"];
+            if ([components count] >= 3) {
+                NSString *sender = components[0];
+                NSString *type = components[1];
+                NSString *msg = components[2];
+                
+                if (![sender isEqualToString:networkUserId]) {
+                    if ([type isEqualToString:@"scramble"]) {
+                        WriteToLog([[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender] UTF8String]);
+                        [scrambler ActivateOnCondition:[NSString stringWithFormat:@"network_%@", msg]];
+                    }
+                }
+                else
+                {
+                    WriteToLog([[NSString stringWithFormat:@"Will not action message sent by self: %@", myMessage] UTF8String]);
                 }
             }
             else
             {
-                WriteToLog([[NSString stringWithFormat:@"Will not action message sent by self: %@", myMessage] UTF8String]);
+                WriteToLog([[NSString stringWithFormat:@"Could not action message: %@", myMessage] UTF8String]);
             }
         }
-        else
-        {
-            WriteToLog([[NSString stringWithFormat:@"Could not action message: %@", myMessage] UTF8String]);
-        }
-    }
-    [networkManager ClearCachedMessages];
+        [networkManager ClearCachedMessages];
+    });
     
     ManageBackup();
 }
@@ -1721,13 +1723,14 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
 
 void StoreWorkRAM()
 {
-    
-    WriteToLog("storing work ram");
-    for (int i = 0; i < 0x10000; i++)
-    {
-        workRamCopy[i] = work_ram[i];
-    }
-    WriteToLog("stored work ram");
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        WriteToLog("storing work ram");
+        for (int i = 0; i < 0x10000; i++)
+        {
+            workRamCopy[i] = work_ram[i];
+        }
+        WriteToLog("stored work ram");
+    });
 }
 
 void RestoreWorkRAM()
@@ -1743,12 +1746,14 @@ void RestoreWorkRAM()
 
 void StoreVRAM()
 {
-    WriteToLog("storing Vram");
-    for (int i = 0; i < 0x10000; i++)
-    {
-        vRamCopy[i] = vram[i];
-    }
-    WriteToLog("stored Vram");
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        WriteToLog("storing Vram");
+        for (int i = 0; i < 0x10000; i++)
+        {
+            vRamCopy[i] = vram[i];
+        }
+        WriteToLog("stored Vram");
+    });
 }
 
 void RestoreVRAM()
