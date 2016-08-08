@@ -21,8 +21,6 @@
         
         self.startTime = [self timeStampAsNumber];
         
-        FILE *testDoc = fopen([[[GenPlusGameCore PathString] stringByAppendingString:@"NETWORK_START.txt"] UTF8String], "w");
-        fclose(testDoc);
     }
     return self;
 }

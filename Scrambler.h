@@ -15,7 +15,7 @@
 @property NSMutableArray *parameters;
 @property NSMutableArray *editHistory;
 @property NSString *readPath, *logPath;
-
+@property BOOL updatingDefs;
 
 -(void)UpdateDefinitions;
 -(void)ActivateOnCondition:(NSString*)condition;

@@ -26,8 +26,6 @@
         self.readPath = [currentpath stringByAppendingString:@"memorycommands.txt"];
         self.logPath = [currentpath stringByAppendingString:@"GenesisLog.txt"];
         
-        FILE *testDoc = fopen([[currentpath stringByAppendingString:@"SCRAMBLER_START.txt"] UTF8String], "w");
-        fclose(testDoc);
 
         [[NSFileManager defaultManager] createFileAtPath:[currentpath stringByAppendingString:@"here_it_is.txt"]
                                                 contents:nil
@@ -43,18 +41,24 @@
 
 -(void)UpdateDefinitions
 {
-    self.parameters = [NSMutableArray array];
+    if (!self.updatingDefs)
+    {
+        self.updatingDefs = YES;
+        NSMutableArray *tempArray = [NSMutableArray array];
 
-    NSString *source = [NSString stringWithContentsOfFile:self.readPath
-                                                 encoding:NSASCIIStringEncoding
-                                                    error:nil];
-    
-    for (NSString *component in [source componentsSeparatedByString:@"\n"]) {
-        NSDictionary *dict = [self DictFromString:component];
-        if (dict) [self.parameters addObject:dict];
+        NSString *source = [NSString stringWithContentsOfFile:self.readPath
+                                                     encoding:NSASCIIStringEncoding
+                                                        error:nil];
+        
+        for (NSString *component in [source componentsSeparatedByString:@"\n"]) {
+            NSDictionary *dict = [self DictFromString:component];
+            if (dict) [tempArray addObject:dict];
+        }
+        
+        WriteToLog("got parameters");
+        self.parameters = tempArray;
+        self.updatingDefs = NO;
     }
-    
-    WriteToLog("got parameters");
 
 }
 
