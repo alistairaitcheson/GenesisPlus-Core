@@ -39,5 +39,6 @@ void WriteToLog(char string[]);
 void SendNetworkEvent(char str[]);
 
 +(NSString*)PathString;
++(void)WriteToLog:(NSString*)string;
 
 @end

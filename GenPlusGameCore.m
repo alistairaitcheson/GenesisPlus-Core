@@ -159,7 +159,28 @@ static __weak GenPlusGameCore *_current;
         NSString *settingsSource = [NSString stringWithContentsOfFile:shouldLogPath
                                                              encoding:NSASCIIStringEncoding
                                                                 error:nil];
-        allowLogging = [settingsSource isEqualToString:@"allow:yes"];
+        
+        NSArray *components = [settingsSource componentsSeparatedByString:@"\n"];
+        NSMutableDictionary *tempSettings = [NSMutableDictionary dictionary];
+        
+        for (NSString *component in components) {
+            [GenPlusGameCore WriteToLog:[@"logsettings component: " stringByAppendingString:component]];
+            NSArray *details = [component componentsSeparatedByString:@":"];
+            if ([details count] > 1) {
+                [tempSettings setObject:details[1] forKey:details[0]];
+            }
+            else
+            {
+                [GenPlusGameCore WriteToLog:@"only one component"];
+                
+            }
+        }
+        
+        for (NSString *key in [tempSettings allKeys]) {
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"%@ = %@", key, tempSettings[key]]];
+        }
+        allowLogging = [tempSettings[@"allow"] isEqualToString:@"yes"];
+//        [GenPlusGameCore WriteToLog:tempSettings[@"allow"]];
     }
     
     ClearLog();
@@ -1615,24 +1636,24 @@ void RAMCheatUpdate(void)
                 NSString *timeStamp = components[3];
                 if ([timeStamp intValue] < [[networkManager timeStampAsNumber] intValue])
                 {
-                    WriteToLog([[NSString stringWithFormat:@"Will not action message sent prior to start: %@", myMessage] UTF8String]);
+                    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Will not action message sent prior to start: %@", myMessage]];
                     continue;
                 }
                 
                 if (![sender isEqualToString:networkUserId]) {
                     if ([type isEqualToString:@"scramble"]) {
-                        WriteToLog([[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender] UTF8String]);
+                        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender]];
                         [scrambler ActivateOnCondition:[NSString stringWithFormat:@"network_%@", msg]];
                     }
                 }
                 else
                 {
-                    WriteToLog([[NSString stringWithFormat:@"Will not action message sent by self: %@", myMessage] UTF8String]);
+                    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Will not action message sent by self: %@", myMessage]];
                 }
             }
             else
             {
-                WriteToLog([[NSString stringWithFormat:@"Could not action message: %@", myMessage] UTF8String]);
+                [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Could not action message: %@", myMessage]];
             }
         }
         [networkManager ClearCachedMessages];
@@ -1669,9 +1690,7 @@ void ScrambleByte()
 
 void SetByteOnMem(uint whichByte, uint newValue, uint whichMem)
 {
-    char string[80];
-    sprintf(string, "Setting byte at %04x to value %04x (in memory %d)", whichByte, newValue, whichMem);
-    WriteToLog(string);
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Setting byte at %04x to value %04x (in memory %i)", whichByte, newValue, whichMem]];
     
     if (whichMem == 0)
         work_ram[whichByte] = newValue;
@@ -1693,9 +1712,8 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
     int target = min + (rand() % (max - min + 1));//0xF762 + (rand() % 0x0002); //(rand() % 0xFFFF); // technically we're scrambling values from #FF0000 to #FFFFFF, but work ram just looks at those values we care about
     int value = minV + (rand() % (maxV - minV + 1));
     
-    char string[80];
-    sprintf(string, "Scrambling byte at %04x to value %04x (in memory %d)", target, value, whichMem);
-    WriteToLog(string);
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Setting byte at %04x to value %04x (in memory %i)", target, value, whichMem]];
+
     if (whichMem == 0){
         if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
         work_ram[target] = value;
@@ -1725,9 +1743,8 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
     int value = minV + (rand() % (maxV - minV + 1));
     
     
-    char string[80];
-    sprintf(string, "Incrementing byte at %04x by value %04x (in memory %d)", target, value, whichMem);
-    WriteToLog(string);
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Incrementing byte at %04x by value %04x (in memory %d)", target, value, whichMem]];
+
     if (whichMem == 0){
         if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
         work_ram[target] = (work_ram[target] + value) % 0x100;
@@ -1792,6 +1809,29 @@ void RestoreVRAM()
     
 }
 
++(void)WriteToLog:(NSString*)string
+{
+    if (!allowLogging) return;
+
+    NSDate *date = [NSDate date];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"HH:mm:SS "];
+    NSString *timeString = [formatter stringFromDate:date];
+    
+    NSString *text = @"";
+    
+    if (!string)
+    {
+        text = [timeString stringByAppendingString:@"<nil>"];
+    }
+    else
+    {
+        text = [timeString stringByAppendingString:string];
+    }
+    
+    [waitingLogs addObject:[text stringByAppendingString:@"\n"]];
+}
+
 void WriteToLog(char string[])
 {
     if (!allowLogging) return;
@@ -1801,7 +1841,7 @@ void WriteToLog(char string[])
     
     NSDate *date = [NSDate date];
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    [formatter setDateFormat:@"HH:mm:SS"];
+    [formatter setDateFormat:@"HH:mm:SS "];
     NSString *timeString = [formatter stringFromDate:date];
     
     text = [timeString stringByAppendingString:text];
@@ -1867,9 +1907,7 @@ void ManageBackup()
     {
         backupTimer = 0;
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
-            char log[80];
-            sprintf(log, "Backing up index %04X", backupIndex);
-            WriteToLog(log);
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Backing up index %04X", backupIndex]];
 
             for (int k = 0; k < 0x10000; k++) {
                 workRamHistory[backupIndex][k] = work_ram[k];
@@ -1883,10 +1921,8 @@ void ManageBackup()
 
 void LoadFromBackup()
 {
-    char log[80];
-    sprintf(log, "loading backup from index %04X", backupIndex);
-    WriteToLog(log);
-    
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"loading backup from index %04X", backupIndex]];
+
     for (int k = 0; k < 0x10000; k++) {
         work_ram[k] = workRamHistory[backupIndex - 1][k];
     }

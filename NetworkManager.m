@@ -61,7 +61,7 @@
     
     NSString *host = (params[@"ip"])? params[@"ip"] : @"localhost";
     NSString *port = (params[@"port"])? params[@"port"] : @"80";
-    WriteToLog([[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port] UTF8String]);
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port]];
 
     CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)host, [port intValue], &readStream, &writeStream);
     self.inputStream = (__bridge NSInputStream *)readStream;
@@ -86,17 +86,17 @@
     [self.outputStream write:[data bytes] maxLength:[data length]];
     
     if (!self.outputStream) {
-        WriteToLog([[NSString stringWithFormat:@"No output stream set up - did not send: %@", response] UTF8String]);
+        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"No output stream set up - did not send: %@", response]];
     }
     else
     {
-        WriteToLog([[NSString stringWithFormat:@"Sent network msg: %@", response] UTF8String]);
-        WriteToLog([[NSString stringWithFormat:@"Input stream state: %@", self.inputStream] UTF8String]);
+        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Sent network msg: %@", response]];
+        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Input stream state: %@", self.inputStream]];
     }
 }
 
 - (void)stream:(NSStream *)theStream handleEvent:(NSStreamEvent)streamEvent {
-    WriteToLog([[NSString stringWithFormat:@"(%@) stream event %i", (theStream == self.inputStream)? @"input" : (theStream == self.outputStream) ? @"output" : @"?", (uint)streamEvent] UTF8String]);
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"(%@) stream event %i", (theStream == self.inputStream)? @"input" : (theStream == self.outputStream) ? @"output" : @"?", (uint)streamEvent]];
     
     switch (streamEvent) {
         case NSStreamEventOpenCompleted:
@@ -111,14 +111,14 @@
                 int len;
                 
                 while ([self.inputStream hasBytesAvailable]) {
-                    len = [self.inputStream read:buffer maxLength:sizeof(buffer)];
+                    len = (int)[self.inputStream read:buffer maxLength:sizeof(buffer)];
                     if (len > 0) {
                         
                         NSString *output = [[NSString alloc] initWithBytes:buffer length:len encoding:NSASCIIStringEncoding];
                         
                         if (nil != output) {
-                            NSString *logMsg = [NSString stringWithFormat:@"received from server: %@  -->  cache size: %i", output, [self.cachedMessages count]];
-                            WriteToLog((char*)[logMsg UTF8String]);
+                            NSString *logMsg = [NSString stringWithFormat:@"received from server: %@  -->  cache size: %i", output, (int)[self.cachedMessages count]];
+                            [GenPlusGameCore WriteToLog:logMsg];
                             [self.cachedMessages addObject:output];
                         }
                     }
