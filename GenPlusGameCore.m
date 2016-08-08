@@ -1878,6 +1878,7 @@ void CheckLogs()
             
             [waitingLogs removeAllObjects];
         }
+        writingLog = false;
     });
 }
 
