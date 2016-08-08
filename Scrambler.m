@@ -87,7 +87,11 @@
     if (!dict[@"trigger"]) dict[@"trigger"] = @"always";
     if (!dict[@"edit"]) dict[@"edit"] = @"scramble";
     if (!dict[@"repeat"]) dict[@"repeat"] = @"1";
-    
+    if (!dict[@"probmin"]) dict[@"probmin"] = @"0";
+    if (!dict[@"probmax"]) dict[@"probmax"] = @"100";
+    if (!dict[@"randoff"]) dict[@"randoff"] = @"0";
+    if (!dict[@"roffcount"]) dict[@"roffcount"] = @"0";
+
     dict[@"SOURCE"] = source;
     
     return dict;
@@ -118,6 +122,15 @@
         }
         
         if (canPerform) {
+            uint probaValue = rand() % 100;
+            
+            //for splitting things probabilistically
+            if(probaValue < (uint)[param[@"probmin"] intValue] ||
+               probaValue >= (uint)[param[@"probmax"] intValue])
+            {
+                continue;
+            }
+            
             if (param[@"network"])
             {
                 SendNetworkEvent((char*)[param[@"network"] UTF8String]);
@@ -131,10 +144,17 @@
                 if ([param[@"type"] isEqualToString:@"z80"]) whichType = 2;
                 if ([param[@"type"] isEqualToString:@"cart"]) whichType = 3;
                 if ([param[@"type"] isEqualToString:@"all"]) whichType = 100;
+                
+                uint indexStart = [self uIntFromNSString:param[@"start"]];
+                uint indexEnd = [self uIntFromNSString:param[@"end"]];
+                uint offset = [self uIntFromNSString:param[@"randoff"]] * (rand() % ([self uIntFromNSString:param[@"roffcount"]] + 1));
+                indexStart += offset;
+                indexEnd += offset;
+                                                                
 
                 if ([param[@"edit"] isEqualToString:@"scramble" ]) {
-                    ScrambleByteWithRange([self uIntFromNSString:param[@"start"]],
-                                          [self uIntFromNSString:param[@"end"]],
+                    ScrambleByteWithRange(indexStart,
+                                          indexEnd,
                                           [self uIntFromNSString:param[@"min"]],
                                           [self uIntFromNSString:param[@"max"]],
                                           whichType,
@@ -142,8 +162,8 @@
                 }
 
                 if ([param[@"edit"] isEqualToString:@"add" ]) {
-                    IncrementByteWithRange([self uIntFromNSString:param[@"start"]],
-                                          [self uIntFromNSString:param[@"end"]],
+                    IncrementByteWithRange(indexStart,
+                                          indexEnd,
                                           [self uIntFromNSString:param[@"min"]],
                                           [self uIntFromNSString:param[@"max"]],
                                           whichType,

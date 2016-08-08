@@ -1669,6 +1669,7 @@ void CheckForRamChanges()
         for (int i = 0 ; i < 0x10000; i++) {
             if (lastWorkRam[i] != work_ram[i]) {
                 [scrambler ActivateOnCondition:[NSString stringWithFormat:@"byte_%04X", i]];
+                [scrambler ActivateOnCondition:[NSString stringWithFormat:@"byte_%04X_%02X", i, work_ram[i]]];
             }
         }
         for (int i = 0 ; i < 0x10000; i++) {
