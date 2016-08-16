@@ -34,7 +34,7 @@ OE_EXPORTED_CLASS
 
 void SetByteOnMem(uint whichByte, uint newValue, uint whichMem);
 void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record);
-void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record);
+void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound);
 void WriteToLog(char string[]);
 void SendNetworkEvent(char str[]);
 

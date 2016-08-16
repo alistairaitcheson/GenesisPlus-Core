@@ -737,6 +737,7 @@
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
+				MACH_O_TYPE = mh_dylib;
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
 					"-DUSE_32BPP_RENDERING",
@@ -757,6 +758,7 @@
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "\"$(USER_LIBRARY_DIR)/Application Support/OpenEmu/Cores\"";
+				MACH_O_TYPE = mh_dylib;
 				OTHER_CFLAGS = (
 					"-DLSB_FIRST",
 					"-DUSE_32BPP_RENDERING",

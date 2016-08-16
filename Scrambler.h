@@ -16,6 +16,7 @@
 @property NSMutableArray *editHistory;
 @property NSString *readPath, *logPath;
 @property BOOL updatingDefs;
+@property (nonatomic, strong) NSMutableDictionary *usageCounts;
 
 -(void)UpdateDefinitions;
 -(void)ActivateOnCondition:(NSString*)condition;

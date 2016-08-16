@@ -525,9 +525,6 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     }
     if (GenesisMap[button] == INPUT_Z) {
         LoadFromBackup();
-
-//        RestoreWorkRAM();
-//        RestoreVRAM();
     }
 }
 
@@ -1738,7 +1735,7 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
     });
 }
 
-void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record)
+void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound)
 {
     if (min > max || minV > maxV){
         WriteToLog("Cannot increment as start > end or min > max");
@@ -1747,6 +1744,18 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
     
     int target = min + (rand() % (max - min + 1));//0xF762 + (rand() % 0x0002); //(rand() % 0xFFFF); // technically we're scrambling values from #FF0000 to #FFFFFF, but work ram just looks at those values we care about
     int value = minV + (rand() % (maxV - minV + 1));
+    
+    if (useBounds)
+    {
+        if (value < (int)lowBound)
+        {
+            value = lowBound;
+        }
+        if (value > (int)highBound)
+        {
+            value = highBound;
+        }
+    }
     
     
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Incrementing byte at %04x by value %04x (in memory %d)", target, value, whichMem]];

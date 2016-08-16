@@ -19,8 +19,8 @@
     self = [super init];
     if (self) {
         self.editHistory = [NSMutableArray array];
+        self.usageCounts = [NSMutableDictionary dictionary];
     
-        
         NSString *currentpath = [GenPlusGameCore PathString];
         
         self.readPath = [currentpath stringByAppendingString:@"memorycommands.txt"];
@@ -103,21 +103,25 @@
         BOOL canPerform = [param[@"trigger"] isEqualToString:condition];
         if ([condition hasPrefix:@"timer_"] && [param[@"trigger"] hasPrefix:@"timer_"])
         {
-//            WriteToLog("has prefix timer");
             NSString *timeStr = [condition substringFromIndex:6];
-//            WriteToLog("got time string");
             uint inputTime = (uint)[timeStr intValue];
-//            WriteToLog("got inputTime");
 
             NSString *myTimeStr = [param[@"trigger"] substringFromIndex:6];
-//            WriteToLog("got myTimeStr");
             uint period = (uint)[myTimeStr intValue];
-//            WriteToLog("got period");
+            
             
             if (inputTime % period == 0)
             {
 //                WriteToLog("can perform");
                 canPerform = YES;
+                
+                if (param[@"lastTime"])
+                {
+                    if (inputTime > [self uIntFromNSString:param[@"lastTime"]])
+                    {
+                        canPerform = NO;
+                    }
+                }
             }
         }
         
@@ -135,6 +139,23 @@
             {
                 SendNetworkEvent((char*)[param[@"network"] UTF8String]);
                 continue;
+            }
+            
+            if (param[@"name"] && param[@"only"])
+            {
+                NSString *idString = param[@"name"];
+                uint usesSoFar = [self uIntFromNSString:self.usageCounts[idString]];
+                if (usesSoFar > [self uIntFromNSString:param[@"only"]] )
+                {
+                    continue;
+                }
+                else
+                {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [self.usageCounts setValue:[NSNumber numberWithInt:(int)usesSoFar + 1]
+                                            forKey:idString];
+                    });
+                }
             }
             
             for (int i = 0; i < [self uIntFromNSString:param[@"repeat"]]; i++) {
@@ -162,12 +183,21 @@
                 }
 
                 if ([param[@"edit"] isEqualToString:@"add" ]) {
+                    bool useBounds = (param[@"lowBound"] || param[@"highBound"]);
+                    uint lowBound = 0x00;
+                    if (param[@"lowBound"]) lowBound = [self uIntFromNSString:param[@"lowBound"]];
+                    uint highBound = 0xFF;
+                    if (param[@"highBound"]) highBound = [self uIntFromNSString:param[@"highBound"]];
+
                     IncrementByteWithRange(indexStart,
                                           indexEnd,
                                           [self uIntFromNSString:param[@"min"]],
                                           [self uIntFromNSString:param[@"max"]],
                                           whichType,
-                                           true);
+                                           true,
+                                           useBounds,
+                                           lowBound,
+                                           highBound);
                 }
                 if([param[@"edit"] isEqualToString:@"reverse"])
                 {
