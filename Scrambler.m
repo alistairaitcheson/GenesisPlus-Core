@@ -55,7 +55,7 @@
             if (dict) [tempArray addObject:dict];
         }
         
-        WriteToLog("got parameters");
+//        WriteToLog("got parameters");
         self.parameters = tempArray;
         self.updatingDefs = NO;
     }
@@ -171,6 +171,9 @@
                 uint offset = [self uIntFromNSString:param[@"randoff"]] * (rand() % ([self uIntFromNSString:param[@"roffcount"]] + 1));
                 indexStart += offset;
                 indexEnd += offset;
+                
+                bool hide = false;
+                if (param[@"hide"]) hide = true;
                                                                 
 
                 if ([param[@"edit"] isEqualToString:@"scramble" ]) {
@@ -179,10 +182,13 @@
                                           [self uIntFromNSString:param[@"min"]],
                                           [self uIntFromNSString:param[@"max"]],
                                           whichType,
-                                          true);
+                                          true,
+                                          hide);
                 }
 
-                if ([param[@"edit"] isEqualToString:@"add" ]) {
+                bool isSubtract = [param[@"edit"] isEqualToString:@"subtract" ];
+                
+                if ([param[@"edit"] isEqualToString:@"add" ] || [param[@"edit"] isEqualToString:@"subtract" ]) {
                     bool useBounds = (param[@"lowBound"] || param[@"highBound"]);
                     uint lowBound = 0x00;
                     if (param[@"lowBound"]) lowBound = [self uIntFromNSString:param[@"lowBound"]];
@@ -197,11 +203,25 @@
                                            true,
                                            useBounds,
                                            lowBound,
-                                           highBound);
+                                           highBound,
+                                           isSubtract,
+                                           hide);
                 }
                 if([param[@"edit"] isEqualToString:@"reverse"])
                 {
                     [self ReverseLastEditInHistory:whichType];
+                }
+                
+                if ([param[@"edit"] isEqualToString:@"track"])
+                {
+                    NSString *location = [param[@"trigger"] substringFromIndex:[@"byte_" length]];
+                    uint valueAtLocation = ValueAtLocation([self uIntFromNSString:location],
+                                                           whichType);
+                    NSString *outputStr = [NSString stringWithFormat:@"track %@ = %04X %@",
+                                           location,
+                                           valueAtLocation,
+                                           param[@"suffix"]];
+                    [GenPlusGameCore WriteToLog:outputStr];
                 }
             }
         }

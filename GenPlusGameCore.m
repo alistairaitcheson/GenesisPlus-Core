@@ -516,8 +516,8 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
 //    sprintf(str, "Should I activate scramble? %d (seeking %d)", (int)GenesisMap[button], (int)INPUT_A);
 //    WriteToLog(str);
     if (GenesisMap[button] == INPUT_X) {
-        WriteToLog("Activating scramble");
-        shouldScramble = true;
+//        WriteToLog("Activating scramble");
+//        shouldScramble = true;
     }
     if (GenesisMap[button] == INPUT_Y) {
 //        StoreWorkRAM();
@@ -543,8 +543,8 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
         input.pad[(player-1) * 4] &= ~GenesisMap[button];
 
     if (GenesisMap[button] == INPUT_X) {
-        WriteToLog("Deactivating scramble");
-        shouldScramble = false;
+//        WriteToLog("Deactivating scramble");
+//        shouldScramble = false;
     }
 }
 
@@ -1703,7 +1703,7 @@ void SetByteOnMem(uint whichByte, uint newValue, uint whichMem)
     });
 }
 
-void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record)
+void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool hide)
 {
     if (min > max || minV > maxV){
         WriteToLog("Cannot scramble as start > end or min > max");
@@ -1719,6 +1719,10 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
         if (whichMem == 0){
             if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
             work_ram[target] = value;
+            if (hide)
+            {
+                lastWorkRam[target] = work_ram[target];
+            }
         }
         if (whichMem == 1){
     //        if (record) [scrambler RegisterInHistory_Addr:target Was:vdp_read_byte(target) Became:value OnMem:whichMem];
@@ -1735,49 +1739,77 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
     });
 }
 
-void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound)
+void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound, bool subtract, bool hide)
 {
     if (min > max || minV > maxV){
         WriteToLog("Cannot increment as start > end or min > max");
         return;
     }
     
+    int subMultiplier = (subtract)? -1 : 1;
+    
     int target = min + (rand() % (max - min + 1));//0xF762 + (rand() % 0x0002); //(rand() % 0xFFFF); // technically we're scrambling values from #FF0000 to #FFFFFF, but work ram just looks at those values we care about
     int value = minV + (rand() % (maxV - minV + 1));
     
-    if (useBounds)
-    {
-        if (value < (int)lowBound)
-        {
-            value = lowBound;
-        }
-        if (value > (int)highBound)
-        {
-            value = highBound;
-        }
-    }
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"%@ byte at %04x by value %04x (in memory %d)",
+                                 (subtract)? @"Decrementing" : @"Incrementing",
+                                 target, value, whichMem]];
     
-    
-    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Incrementing byte at %04x by value %04x (in memory %d)", target, value, whichMem]];
-
     dispatch_async(dispatch_get_main_queue(), ^{
         if (whichMem == 0){
-            if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
-            work_ram[target] = (work_ram[target] + value) % 0x100;
+//            if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
+            int tempValue = ((int)work_ram[target] + (int)(value * subMultiplier));
+            if (tempValue < (int)lowBound) { tempValue = (int)lowBound; };
+            if (tempValue > (int)highBound) { tempValue = (int)highBound; };
+
+            work_ram[target] = ((uint)tempValue) % 0x100;
+            if (hide)
+            {
+                lastWorkRam[target] = work_ram[target];
+            }
         }
         if (whichMem == 1){
     //        if (record) [scrambler RegisterInHistory_Addr:target Was:vdp_read_byte(target) Became:value OnMem:whichMem];
-            vdp_write_byte(target, (vdp_read_byte(target) + value) % 0x100);
+            int tempValue = ((int)vdp_read_byte(target) + (int)(value * subMultiplier));
+            if (tempValue < (int)lowBound) { tempValue = (int)lowBound; };
+            if (tempValue > (int)highBound) { tempValue = (int)highBound; };
+
+            vdp_write_byte(target, ((uint)tempValue) % 0x100);
         }
         if (whichMem == 2){
-            if (record) [scrambler RegisterInHistory_Addr:target Was:z80_memory_r(target) Became:value OnMem:whichMem];
-            z80_memory_w(target, (z80_memory_r(target) + value) % 0x100);
+//            if (record) [scrambler RegisterInHistory_Addr:target Was:z80_memory_r(target) Became:value OnMem:whichMem];
+            int tempValue = ((int)z80_memory_r(target) + (int)(value * subMultiplier));
+            if (tempValue < (int)lowBound) { tempValue = (int)lowBound; };
+            if (tempValue > (int)highBound) { tempValue = (int)highBound; };
+            
+            z80_memory_w(target, ((uint)tempValue) % 0x100);
         }
         if (whichMem == 3){
-            if (record) [scrambler RegisterInHistory_Addr:target Was:cart.rom[target % cart.romsize] Became:value OnMem:whichMem];
-            cart.rom[target % cart.romsize] = (cart.rom[target % cart.romsize] + value) % 0x100;
+//            if (record) [scrambler RegisterInHistory_Addr:target Was:cart.rom[target % cart.romsize] Became:value OnMem:whichMem];
+            int tempValue = ((int)cart.rom[target % cart.romsize] + (int)(value * subMultiplier));
+            if (tempValue < (int)lowBound) { tempValue = (int)lowBound; };
+            if (tempValue > (int)highBound) { tempValue = (int)highBound; };
+            
+            cart.rom[target % cart.romsize] = ((uint)tempValue) % 0x100;
         }
     });
+}
+
+uint ValueAtLocation(uint location, uint type)
+{
+    if (type == 0){
+        return work_ram[location];
+    }
+    if (type == 0){
+        return vdp_read_byte(location);
+    }
+    if (type == 0){
+        return z80_memory_r(location);
+    }
+    if (type == 0){
+        return cart.rom[location % cart.romsize];
+    }
+    return 0;
 }
 
 void StoreWorkRAM()
