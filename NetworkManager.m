@@ -17,6 +17,8 @@
     if (self) {
         WriteToLog("init NetworkManager");
         self.cachedMessages = [NSMutableArray array];
+        self.writeCache = [NSMutableArray array];
+        self.writeCacheReady = NO;
         [self initNetworkCommunication];
         
         self.startTime = [self timeStampAsNumber];
@@ -57,7 +59,7 @@
     NSDictionary *params = nil;//[self NetworkSettings];
 //    if(!params)return;
     
-    NSString *host = (params[@"ip"])? params[@"ip"] : @"192.168.0.2";//@"localhost";//
+    NSString *host = (params[@"ip"])? params[@"ip"] : @"192.168.0.2";////@"192.168.0.2";//@"localhost";//
     NSString *port = (params[@"port"])? params[@"port"] : @"13000";
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port]];
 
@@ -94,18 +96,22 @@
 
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header
 {
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Caching message to write: %@>%@", header, message]];
     NSString *response  = [NSString stringWithFormat:@"%@>%@>%@", header, message, [self timeStampAsNumber]];
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"   response: %@", response]];
     NSData *data = [[NSData alloc] initWithData:[response dataUsingEncoding:NSASCIIStringEncoding]];
-    [self.outputStream write:[data bytes] maxLength:[data length]];
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"   data length: %i", (int)[data length]]];
+//    [self.outputStream write:[data bytes] maxLength:[data length]];
     
-    if (!self.outputStream) {
-        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"No output stream set up - did not send: %@", response]];
-    }
-    else
+    [[self writeCache] addObject:data];
+    if (self.writeCacheReady)
     {
-        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Sent network msg: %@", response]];
-        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Input stream state: %@", self.inputStream]];
+        [self WriteFromCache];
+        self.writeCacheReady = NO;
     }
+
+    
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Cache size: %i", (int)[self.writeCache count]]];
 }
 
 - (void)stream:(NSStream *)theStream handleEvent:(NSStreamEvent)streamEvent {
@@ -116,7 +122,7 @@
             WriteToLog("Stream opened");
             break;
             
-        case NSStreamEventHasBytesAvailable:
+        case NSStreamEventHasBytesAvailable: // CAN READ
             WriteToLog("NSStreamEventHasBytesAvailable");
             if (theStream == self.inputStream)
             {
@@ -139,18 +145,20 @@
             }
             break;
             
-        case NSStreamEventHasSpaceAvailable:
-            WriteToLog("Has bytes available");
+        case NSStreamEventHasSpaceAvailable: // CAN WRITE
+            WriteToLog("FLAGGED: CAN WRITE");
+            self.writeCacheReady = YES;
+            [self WriteFromCache];
             break;
             
         case NSStreamEventErrorOccurred:
             WriteToLog("Can not connect to the host!");
-            [self Refresh];
+//            [self Refresh];
             break;
             
         case NSStreamEventEndEncountered:
             WriteToLog("Event ended");
-            [self Refresh];
+//            [self Refresh];
             break;
             
         default:
@@ -192,6 +200,22 @@
     [self Close];
     [self initNetworkCommunication];
     
+}
+
+-(BOOL)WriteFromCache
+{
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Writing from cache (%i messages)", (int)[self.writeCache count]]];
+    if ([self.writeCache count] > 0)
+    {
+        for (NSData *data in self.writeCache) {
+            [self.outputStream write:[data bytes] maxLength:[data length]];
+        }
+        [self.writeCache removeAllObjects];
+        self.writeCacheReady = NO;
+        return YES;
+    }
+    self.writeCacheReady = YES;
+    return NO;
 }
 
 @end

@@ -17,6 +17,9 @@
 @property (nonatomic, strong) NSMutableArray *cachedMessages;
 @property (nonatomic, strong) NSString *startTime;
 
+@property (nonatomic, strong) NSMutableArray *writeCache;
+@property BOOL writeCacheReady;
+
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header;
 -(NSArray*)GetCachedMessages;
 -(void)ClearCachedMessages;

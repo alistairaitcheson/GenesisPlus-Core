@@ -105,6 +105,8 @@ static uint glitchTimer;
 
 static bool allowLogging = true;
 static bool writingLog = false;
+static NSFileManager *fileManager;
+static NSFileHandle *logHandler;
 
 typedef NS_ENUM(NSInteger, MultiTapType)
 {
@@ -143,9 +145,14 @@ static __weak GenPlusGameCore *_current;
     }
     
     srand(time(NULL));
+    
+    fileManager = [[NSFileManager alloc] init];
+
+    scrambler = [[Scrambler alloc] init];
+    logHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
 
     waitingLogs = [NSMutableArray array];
-    scrambler = [[Scrambler alloc] init];
+    
     
     [GenPlusGameCore WriteToLog:@"STARTING"];
     CheckLogs();
@@ -153,7 +160,7 @@ static __weak GenPlusGameCore *_current;
 	_current = self;
  
     NSString *shouldLogPath = [[GenPlusGameCore PathString] stringByAppendingString:@"logsettings.txt"];
-    if ([[NSFileManager defaultManager] fileExistsAtPath:shouldLogPath])
+    if ([fileManager fileExistsAtPath:shouldLogPath])
     {
         NSString *settingsSource = [NSString stringWithContentsOfFile:shouldLogPath
                                                              encoding:NSASCIIStringEncoding
@@ -1931,17 +1938,17 @@ void CheckLogs()
                 }
             }
             
-            if (![[NSFileManager defaultManager] fileExistsAtPath:[scrambler logPath]])
+            if (![fileManager fileExistsAtPath:[scrambler logPath]])
             {
-                [[NSFileManager defaultManager] createFileAtPath:[scrambler logPath]
+                [fileManager createFileAtPath:[scrambler logPath]
                                                         contents:nil
                                                       attributes:nil];
             }
             
-            NSFileHandle *fileHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
-            [fileHandler seekToEndOfFile];
-            [fileHandler writeData:[text dataUsingEncoding:NSASCIIStringEncoding]];
-            [fileHandler closeFile];
+//            logHandler = [NSFileHandle fileHandleForUpdatingAtPath:[scrambler logPath]];
+            [logHandler seekToEndOfFile];
+            [logHandler writeData:[text dataUsingEncoding:NSASCIIStringEncoding]];
+//            [logHandler closeFile];
 
             [waitingLogs removeAllObjects];
         }
@@ -1953,9 +1960,9 @@ void ClearLog()
 {
     if (allowLogging && [scrambler logPath])
     {
-        if (![[NSFileManager defaultManager] fileExistsAtPath:[scrambler logPath]])
+        if (![fileManager fileExistsAtPath:[scrambler logPath]])
         {
-            [[NSFileManager defaultManager] createFileAtPath:[scrambler logPath]
+            [fileManager createFileAtPath:[scrambler logPath]
                                                     contents:nil
                                                   attributes:nil];
         }
@@ -2024,9 +2031,9 @@ void SendNetworkEvent(char str[])
     NSString *currentpath = @"~/Library/Application Support/OpenEmu/AGA/";
     currentpath = [currentpath stringByExpandingTildeInPath];
     
-    if (![[NSFileManager defaultManager] fileExistsAtPath:currentpath])
+    if (![fileManager fileExistsAtPath:currentpath])
     {
-        [[NSFileManager defaultManager] createDirectoryAtPath:currentpath
+        [fileManager createDirectoryAtPath:currentpath
                                   withIntermediateDirectories:YES
                                                    attributes:nil
                                                         error:nil];
