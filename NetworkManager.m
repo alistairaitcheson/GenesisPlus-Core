@@ -139,6 +139,10 @@
             }
             break;
             
+        case NSStreamEventHasSpaceAvailable:
+            WriteToLog("Has bytes available");
+            break;
+            
         case NSStreamEventErrorOccurred:
             WriteToLog("Can not connect to the host!");
             [self Refresh];
