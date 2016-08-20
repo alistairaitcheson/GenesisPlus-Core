@@ -264,4 +264,18 @@
     return outVal;
 }
 
++(uint)uIntFromNSString:(NSString*)string
+{
+    if ([string length] == 0) {
+        return 0;
+    }
+    uint outVal;
+    NSString *source = [[string componentsSeparatedByString:@"x"] lastObject];
+    
+    NSScanner* scanner = [NSScanner scannerWithString:source];
+    [scanner scanHexInt:&outVal];
+    
+    return outVal;
+}
+
 @end

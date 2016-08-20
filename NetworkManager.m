@@ -19,6 +19,7 @@
         self.cachedMessages = [NSMutableArray array];
         self.writeCache = [NSMutableArray array];
         self.writeCacheReady = NO;
+        
         [self initNetworkCommunication];
         
         self.startTime = [self timeStampAsNumber];
@@ -53,7 +54,19 @@
     return parameters;
 }
 
+-(void)threadLoop{
+    NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+    
+    // Create a run loop observer and attach it to the run loop.
+}
+
 - (void)initNetworkCommunication {
+//    self.thread = [[NSThread alloc] initWithTarget:self
+//                                          selector:@selector(threadLoop)
+//                                            object:nil];
+//    [self.thread start];
+
+    
     CFReadStreamRef readStream;
     CFWriteStreamRef writeStream;
     NSDictionary *params = nil;//[self NetworkSettings];
@@ -69,7 +82,7 @@
     {
         self.inputStream = (__bridge NSInputStream *)readStream;
         [self.inputStream setDelegate:self];
-        [self.inputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [self.inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
         [self.inputStream open];
         WriteToLog("Read stream has succeeded");
     }
@@ -101,17 +114,14 @@
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"   response: %@", response]];
     NSData *data = [[NSData alloc] initWithData:[response dataUsingEncoding:NSASCIIStringEncoding]];
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"   data length: %i", (int)[data length]]];
-//    [self.outputStream write:[data bytes] maxLength:[data length]];
     
     [[self writeCache] addObject:data];
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Cache size: %i", (int)[self.writeCache count]]];
+
     if (self.writeCacheReady)
     {
         [self WriteFromCache];
-        self.writeCacheReady = NO;
     }
-
-    
-    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Cache size: %i", (int)[self.writeCache count]]];
 }
 
 - (void)stream:(NSStream *)theStream handleEvent:(NSStreamEvent)streamEvent {
@@ -146,19 +156,23 @@
             break;
             
         case NSStreamEventHasSpaceAvailable: // CAN WRITE
-            WriteToLog("FLAGGED: CAN WRITE");
-            self.writeCacheReady = YES;
-            [self WriteFromCache];
+            if (theStream == self.outputStream)
+            {
+                WriteToLog("FLAGGED: CAN WRITE");
+                [self WriteFromCache];
+            }
             break;
             
         case NSStreamEventErrorOccurred:
             WriteToLog("Can not connect to the host!");
-//            [self Refresh];
+            [self Close];
+            theStream = nil;
             break;
             
         case NSStreamEventEndEncountered:
             WriteToLog("Event ended");
-//            [self Refresh];
+            [self Close];
+            theStream = nil;
             break;
             
         default:
@@ -187,35 +201,46 @@
 
 -(void)Close
 {
+    [GenPlusGameCore WriteToLog:@"Closing network streams"];
+    
     [self.inputStream close];
     [self.outputStream close];
     
+    [self.inputStream removeFromRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+    [self.inputStream setDelegate:nil];
+    
+    [self.outputStream removeFromRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+    [self.outputStream setDelegate:nil];
+    
     self.inputStream = nil;
     self.outputStream = nil;
+    
+    [GenPlusGameCore WriteToLog:@"Closed network streams"];
     
 }
 
 -(void)Refresh
 {
     [self Close];
+    
     [self initNetworkCommunication];
     
 }
 
--(BOOL)WriteFromCache
+-(void)WriteFromCache
 {
+    self.writeCacheReady = NO;
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Writing from cache (%i messages)", (int)[self.writeCache count]]];
     if ([self.writeCache count] > 0)
     {
-        for (NSData *data in self.writeCache) {
-            [self.outputStream write:[data bytes] maxLength:[data length]];
-        }
-        [self.writeCache removeAllObjects];
-        self.writeCacheReady = NO;
-        return YES;
+        NSData *data = self.writeCache[0];
+        [self.outputStream write:[data bytes] maxLength:[data length]];
+        [self.writeCache removeObjectAtIndex:0];
     }
-    self.writeCacheReady = YES;
-    return NO;
+    else
+    {
+        self.writeCacheReady = YES;
+    }
 }
 
 @end

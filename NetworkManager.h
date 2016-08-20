@@ -19,6 +19,7 @@
 
 @property (nonatomic, strong) NSMutableArray *writeCache;
 @property BOOL writeCacheReady;
+@property (nonatomic, strong) NSThread *thread;
 
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header;
 -(NSArray*)GetCachedMessages;

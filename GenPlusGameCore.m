@@ -102,6 +102,8 @@ static NetworkManager *networkManager;
 static NSMutableArray *waitingLogs;
 static NSString *networkUserId;
 static uint glitchTimer;
+static uint logCount = 0;
+static uint maxLogs = 0;
 
 static bool allowLogging = true;
 static bool writingLog = false;
@@ -187,6 +189,10 @@ static __weak GenPlusGameCore *_current;
         }
         allowLogging = [tempSettings[@"allow"] isEqualToString:@"yes"];
 //        [GenPlusGameCore WriteToLog:tempSettings[@"allow"]];
+        if (tempSettings[@"maxCount"])
+        {
+            maxLogs = [Scrambler uIntFromNSString:tempSettings[@"maxCount"]];
+        }
     }
     
     ClearLog();
@@ -206,6 +212,8 @@ static __weak GenPlusGameCore *_current;
 
 - (void)dealloc
 {
+
+
     free(videoBuffer);
     free(soundBuffer);
 }
@@ -294,6 +302,17 @@ static __weak GenPlusGameCore *_current;
 
 - (void)stopEmulation
 {
+    WriteToLog("stopEmulation was called");
+    [networkManager Close];
+    networkUserId = nil;
+    fileManager = nil;
+    logHandler = nil;
+    
+    networkManager = nil;
+    scrambler = nil;
+    waitingLogs = nil;
+    
+    
     if (sram.on)
     {
         // max. supported SRAM size
@@ -1951,6 +1970,12 @@ void CheckLogs()
 //            [logHandler closeFile];
 
             [waitingLogs removeAllObjects];
+            
+            logCount ++;
+            if (logCount > maxLogs)
+            {
+                allowLogging = false;
+            }
         }
         writingLog = false;
 //    });

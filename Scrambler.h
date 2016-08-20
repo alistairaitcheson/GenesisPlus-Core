@@ -24,4 +24,6 @@
 -(void)RegisterInHistory_Addr:(uint)addr Was:(uint)was Became:(uint)became OnMem:(int)onMem;
 -(void)RequestDefsFromBackground;
 
++(uint)uIntFromNSString:(NSString*)string;
+
 @end
