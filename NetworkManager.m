@@ -56,33 +56,23 @@
 
 -(void)threadLoop{
     NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
-    
-    // Create a run loop observer and attach it to the run loop.
-}
 
-- (void)initNetworkCommunication {
-//    self.thread = [[NSThread alloc] initWithTarget:self
-//                                          selector:@selector(threadLoop)
-//                                            object:nil];
-//    [self.thread start];
-
-    
     CFReadStreamRef readStream;
     CFWriteStreamRef writeStream;
     NSDictionary *params = nil;//[self NetworkSettings];
-//    if(!params)return;
+    //    if(!params)return;
     
     NSString *host = (params[@"ip"])? params[@"ip"] : @"192.168.0.2";////@"192.168.0.2";//@"localhost";//
     NSString *port = (params[@"port"])? params[@"port"] : @"13000";
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port]];
-
+    
     CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)host, [port intValue], &readStream, &writeStream);
     
     if (readStream)
     {
         self.inputStream = (__bridge NSInputStream *)readStream;
         [self.inputStream setDelegate:self];
-        [self.inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        [self.inputStream scheduleInRunLoop:runLoop forMode:NSDefaultRunLoopMode];
         [self.inputStream open];
         WriteToLog("Read stream has succeeded");
     }
@@ -95,7 +85,7 @@
     {
         self.outputStream = (__bridge NSOutputStream *)writeStream;
         [self.outputStream setDelegate:self];
-        [self.outputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [self.outputStream scheduleInRunLoop:runLoop forMode:NSDefaultRunLoopMode];
         [self.outputStream open];
         WriteToLog("Write stream has succeeded");
     }
@@ -104,7 +94,34 @@
         WriteToLog("Write stream has failed");
     }
     
-    WriteToLog("streams opened!");
+    WriteToLog("streams opened! -_-_-_-_");
+    
+    [runLoop runUntilDate:[NSDate distantFuture]];
+//    WriteToLog([[NSString stringWithFormat:@"Beginning loop - run loop status: %@", [runLoop currentMode]] UTF8String]);
+    
+    WriteToLog("run loop ended");
+
+//    while (true) {
+//        if (self.writeCacheReady)
+//        {
+//            WriteToLog("Write cache ready!!!!!!!!!!!!!!!");
+//            [self WriteFromCache];
+//        }
+//        else
+//        {
+//            WriteToLog("........");
+////            WriteToLog([[NSString stringWithFormat:@"Run loop status: %@", [runLoop currentMode]] UTF8String]);
+//        }
+//    }
+    
+}
+
+- (void)initNetworkCommunication {
+    self.thread = [[NSThread alloc] initWithTarget:self
+                                          selector:@selector(threadLoop)
+                                            object:nil];
+    [self.thread start];
+
 }
 
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header
@@ -117,7 +134,7 @@
     
     [[self writeCache] addObject:data];
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Cache size: %i", (int)[self.writeCache count]]];
-
+    
     if (self.writeCacheReady)
     {
         [self WriteFromCache];
