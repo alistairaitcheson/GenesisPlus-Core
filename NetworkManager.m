@@ -54,25 +54,40 @@
 - (void)initNetworkCommunication {
     CFReadStreamRef readStream;
     CFWriteStreamRef writeStream;
-    NSDictionary *params = [self NetworkSettings];
-    if(!params)return;
+    NSDictionary *params = nil;//[self NetworkSettings];
+//    if(!params)return;
     
-    NSString *host = (params[@"ip"])? params[@"ip"] : @"localhost";
-    NSString *port = (params[@"port"])? params[@"port"] : @"80";
+    NSString *host = (params[@"ip"])? params[@"ip"] : @"192.168.0.2";//@"localhost";//
+    NSString *port = (params[@"port"])? params[@"port"] : @"13000";
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port]];
 
     CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)host, [port intValue], &readStream, &writeStream);
-    self.inputStream = (__bridge NSInputStream *)readStream;
-    self.outputStream = (__bridge NSOutputStream *)writeStream;
     
-    [self.inputStream setDelegate:self];
-    [self.outputStream setDelegate:self];
+    if (readStream)
+    {
+        self.inputStream = (__bridge NSInputStream *)readStream;
+        [self.inputStream setDelegate:self];
+        [self.inputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [self.inputStream open];
+        WriteToLog("Read stream has succeeded");
+    }
+    else
+    {
+        WriteToLog("Read stream has failed");
+    }
     
-    [self.inputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-    [self.outputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
-    
-    [self.inputStream open];
-    [self.outputStream open];
+    if (readStream)
+    {
+        self.outputStream = (__bridge NSOutputStream *)writeStream;
+        [self.outputStream setDelegate:self];
+        [self.outputStream scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+        [self.outputStream open];
+        WriteToLog("Write stream has succeeded");
+    }
+    else
+    {
+        WriteToLog("Write stream has failed");
+    }
     
     WriteToLog("streams opened!");
 }
@@ -126,9 +141,12 @@
             
         case NSStreamEventErrorOccurred:
             WriteToLog("Can not connect to the host!");
+            [theStream close];
             break;
             
         case NSStreamEventEndEncountered:
+            WriteToLog("Event ended");
+            [theStream close];
             break;
             
         default:

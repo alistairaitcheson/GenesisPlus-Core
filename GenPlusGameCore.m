@@ -145,13 +145,12 @@ static __weak GenPlusGameCore *_current;
     srand(time(NULL));
 
     waitingLogs = [NSMutableArray array];
+    scrambler = [[Scrambler alloc] init];
+    
+    [GenPlusGameCore WriteToLog:@"STARTING"];
+    CheckLogs();
     
 	_current = self;
-    scrambler = [[Scrambler alloc] init];
-    networkUserId = [NSString stringWithFormat:@"GENESIS_%04X", (rand() % 0x10000)];
-    networkManager = [[NetworkManager alloc] init];
-    [networkManager SendMessage:networkUserId
-                     WithHeader:@"iam"];
  
     NSString *shouldLogPath = [[GenPlusGameCore PathString] stringByAppendingString:@"logsettings.txt"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:shouldLogPath])
@@ -186,6 +185,13 @@ static __weak GenPlusGameCore *_current;
     ClearLog();
     WriteToLog("------- init genesis -------");
     
+    networkUserId = [NSString stringWithFormat:@"GENESIS_%04X", (rand() % 0x10000)];
+    networkManager = [[NetworkManager alloc] init];
+    [networkManager SendMessage:networkUserId
+                     WithHeader:@"iam"];
+
+    WriteToLog("------- init network -------");
+
     CheckForRamChanges();
     
 	return self;
@@ -508,9 +514,9 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     if (GenesisMap[button] == INPUT_C) buttonStr = @"c";
     if (GenesisMap[button] == INPUT_START) buttonStr = @"start";
     if (GenesisMap[button] == INPUT_MODE) buttonStr = @"mode";
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         [scrambler ActivateOnCondition:[NSString stringWithFormat:@"press_%@", buttonStr]];
-    });
+//    });
 
 //    char str[80];
 //    sprintf(str, "Should I activate scramble? %d (seeking %d)", (int)GenesisMap[button], (int)INPUT_A);
@@ -1616,7 +1622,7 @@ void RAMCheatUpdate(void)
 //    [scrambler UpdateDefinitions];
 //    WriteToLog("activating ALWAYS conditions");
     glitchTimer ++;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         [scrambler ActivateOnCondition:@"always"];
         
         [scrambler ActivateOnCondition:[NSString stringWithFormat:@"timer_%i", (int)glitchTimer]];
@@ -1655,7 +1661,7 @@ void RAMCheatUpdate(void)
                 [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Could not action message: %@", myMessage]];
             }
         }
-    });
+//    });
     
     ManageBackup();
 }
@@ -1691,7 +1697,7 @@ void SetByteOnMem(uint whichByte, uint newValue, uint whichMem)
 {
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Setting byte at %04x to value %04x (in memory %i)", whichByte, newValue, whichMem]];
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+//    dispatch_async(dispatch_get_main_queue(), ^{
         if (whichMem == 0)
             work_ram[whichByte] = newValue;
         if (whichMem == 1)
@@ -1700,7 +1706,7 @@ void SetByteOnMem(uint whichByte, uint newValue, uint whichMem)
             z80_memory_w(whichByte, newValue);
         if (whichMem == 3)
             cart.rom[whichByte % cart.romsize] = newValue;
-    });
+//    });
 }
 
 void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool hide)
@@ -1715,7 +1721,7 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
     
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Setting byte at %04x to value %04x (in memory %i)", target, value, whichMem]];
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+//    dispatch_async(dispatch_get_main_queue(), ^{
         if (whichMem == 0){
             if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
             work_ram[target] = value;
@@ -1736,7 +1742,7 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
             if (record) [scrambler RegisterInHistory_Addr:target Was:cart.rom[target % cart.romsize] Became:value OnMem:whichMem];
             cart.rom[target % cart.romsize] = value;
         }
-    });
+//    });
 }
 
 void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound, bool subtract, bool hide)
@@ -1755,7 +1761,7 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
                                  (subtract)? @"Decrementing" : @"Incrementing",
                                  target, value, whichMem]];
     
-    dispatch_async(dispatch_get_main_queue(), ^{
+//    dispatch_async(dispatch_get_main_queue(), ^{
         if (whichMem == 0){
 //            if (record) [scrambler RegisterInHistory_Addr:target Was:work_ram[target] Became:value OnMem:whichMem];
             int tempValue = ((int)work_ram[target] + (int)(value * subMultiplier));
@@ -1792,7 +1798,7 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
             
             cart.rom[target % cart.romsize] = ((uint)tempValue) % 0x100;
         }
-    });
+//    });
 }
 
 uint ValueAtLocation(uint location, uint type)
@@ -1862,7 +1868,7 @@ void RestoreVRAM()
 {
     if (!allowLogging) return;
 
-    dispatch_async(dispatch_get_main_queue(), ^{
+//    dispatch_async(dispatch_get_main_queue(), ^{
         NSDate *date = [NSDate date];
         NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
         [formatter setDateFormat:@"HH:mm:SS "];
@@ -1880,14 +1886,15 @@ void RestoreVRAM()
         }
         
         [waitingLogs addObject:[text stringByAppendingString:@"\n"]];
-    });
+//    });
+    CheckLogs();
 }
 
 void WriteToLog(char string[])
 {
     if (!allowLogging) return;
     
-    dispatch_async(dispatch_get_main_queue(), ^{
+//    dispatch_async(dispatch_get_main_queue(), ^{
         NSString *text = [NSString stringWithCString:string encoding:NSASCIIStringEncoding];
         text = [text stringByAppendingString:@"\n"];
         
@@ -1899,18 +1906,18 @@ void WriteToLog(char string[])
         text = [timeString stringByAppendingString:text];
         
         [waitingLogs addObject:text];
-    });
+//    });
+    CheckLogs();
 }
 
 void CheckLogs()
 {
-    if (!allowLogging || writingLog) return;
+//    if (!allowLogging || writingLog) return;
 
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         writingLog = true;
         NSArray *logArray = [NSArray arrayWithArray:waitingLogs];
-        [waitingLogs removeAllObjects];
-        
+    
         if (allowLogging && [scrambler logPath])
         {
             NSString *text = @"";
@@ -1931,9 +1938,11 @@ void CheckLogs()
             [fileHandler seekToEndOfFile];
             [fileHandler writeData:[text dataUsingEncoding:NSASCIIStringEncoding]];
             [fileHandler closeFile];
+
+            [waitingLogs removeAllObjects];
         }
         writingLog = false;
-    });
+//    });
 }
 
 void ClearLog()
@@ -1990,10 +1999,10 @@ void LoadFromBackup()
 
 void SendNetworkEvent(char str[])
 {
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         [networkManager SendMessage:[NSString stringWithCString:str encoding:NSASCIIStringEncoding]
                          WithHeader:@"scramble"];
-    });
+//    });
 }
 
 +(NSString*)PathString
