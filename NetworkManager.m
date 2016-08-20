@@ -141,12 +141,12 @@
             
         case NSStreamEventErrorOccurred:
             WriteToLog("Can not connect to the host!");
-            [theStream close];
+            [self Refresh];
             break;
             
         case NSStreamEventEndEncountered:
             WriteToLog("Event ended");
-            [theStream close];
+            [self Refresh];
             break;
             
         default:
@@ -173,5 +173,21 @@
     return timeString;
 }
 
+-(void)Close
+{
+    [self.inputStream close];
+    [self.outputStream close];
+    
+    self.inputStream = nil;
+    self.outputStream = nil;
+    
+}
+
+-(void)Refresh
+{
+    [self Close];
+    [self initNetworkCommunication];
+    
+}
 
 @end

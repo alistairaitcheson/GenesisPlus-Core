@@ -22,4 +22,7 @@
 -(void)ClearCachedMessages;
 -(NSString*)timeStampAsNumber;
 
+-(void)Refresh;
+-(void)Close;
+
 @end

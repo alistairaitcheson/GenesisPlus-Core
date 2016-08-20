@@ -526,6 +526,10 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
 //        shouldScramble = true;
     }
     if (GenesisMap[button] == INPUT_Y) {
+        [networkManager Close];
+        networkManager = [[NetworkManager alloc] init];
+        [networkManager SendMessage:networkUserId
+                         WithHeader:@"iam"];
 //        StoreWorkRAM();
 //        StoreVRAM();
     }
