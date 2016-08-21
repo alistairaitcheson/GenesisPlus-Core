@@ -146,11 +146,11 @@
     
     switch (streamEvent) {
         case NSStreamEventOpenCompleted:
-            WriteToLog("Stream opened");
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Stream opened %@", theStream]];
             break;
             
         case NSStreamEventHasBytesAvailable: // CAN READ
-            WriteToLog("NSStreamEventHasBytesAvailable");
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"NSStreamEventHasBytesAvailable %@", theStream]];
             if (theStream == self.inputStream)
             {
                 uint8_t buffer[1024];
@@ -173,6 +173,7 @@
             break;
             
         case NSStreamEventHasSpaceAvailable: // CAN WRITE
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"NSStreamEventHasSPACEAvailable %@", theStream]];
             if (theStream == self.outputStream)
             {
                 WriteToLog("FLAGGED: CAN WRITE");
@@ -181,18 +182,21 @@
             break;
             
         case NSStreamEventErrorOccurred:
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"NSStreamEventErrorOccurred %@", theStream]];
             WriteToLog("Can not connect to the host!");
             [self Close];
             theStream = nil;
             break;
             
         case NSStreamEventEndEncountered:
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"NSStreamEventEndEncountered %@", theStream]];
             WriteToLog("Event ended");
             [self Close];
             theStream = nil;
             break;
             
         default:
+            [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Event %i, %@", (int)streamEvent, theStream]];
             WriteToLog("Unknown event");
     }
 }

@@ -145,8 +145,9 @@ static __weak GenPlusGameCore *_current;
         soundBuffer = (int16_t *)malloc(2048 * 2 * 2);
         cheatList = [[NSMutableDictionary alloc] init];
     }
-    
-    srand(time(NULL));
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    srand((uint)&tv);
     
     fileManager = [[NSFileManager alloc] init];
 
@@ -1656,7 +1657,7 @@ void RAMCheatUpdate(void)
         [scrambler ActivateOnCondition:@"always"];
         
         [scrambler ActivateOnCondition:[NSString stringWithFormat:@"timer_%i", (int)glitchTimer]];
-        
+    
         NSArray *networkMessages = [NSArray arrayWithArray:[networkManager GetCachedMessages]];
         [networkManager ClearCachedMessages];
         
