@@ -18,6 +18,8 @@
 @property BOOL updatingDefs;
 @property (nonatomic, strong) NSMutableDictionary *usageCounts;
 
+@property uint trackerMax, trackerMin;
+
 -(void)UpdateDefinitions;
 -(void)ActivateOnCondition:(NSString*)condition;
 -(uint)uIntFromNSString:(NSString*)string;

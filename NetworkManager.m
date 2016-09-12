@@ -59,8 +59,8 @@
 
     CFReadStreamRef readStream;
     CFWriteStreamRef writeStream;
-    NSDictionary *params = nil;//[self NetworkSettings];
-    //    if(!params)return;
+    NSDictionary *params = [self NetworkSettings];
+    if(!params)return;
     
     NSString *host = (params[@"ip"])? params[@"ip"] : @"192.168.0.2";////@"192.168.0.2";//@"localhost";//
     NSString *port = (params[@"port"])? params[@"port"] : @"13000";

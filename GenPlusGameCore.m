@@ -110,6 +110,8 @@ static bool writingLog = false;
 static NSFileManager *fileManager;
 static NSFileHandle *logHandler;
 
+static uint trackerIndex = 0;
+
 typedef NS_ENUM(NSInteger, MultiTapType)
 {
     MultiTapTypeNone,
@@ -1676,7 +1678,7 @@ void RAMCheatUpdate(void)
                     continue;
                 }
                 
-                if (![sender isEqualToString:networkUserId]) {
+                if (![sender isEqualToString:networkUserId] && ![sender isEqualToString:@"monitor"]) {
                     if ([type isEqualToString:@"scramble"]) {
                         [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender]];
                         [scrambler ActivateOnCondition:[NSString stringWithFormat:@"network_%@", msg]];
@@ -1694,7 +1696,31 @@ void RAMCheatUpdate(void)
         }
 //    });
     
+    RunTracker();
+    
     ManageBackup();
+}
+
+void RunTracker()
+{
+//    for (int i = 0; i < 1000; i++)
+//    {
+        uint currentIndex = trackerIndex + 0x8000;
+        uint indexString[2];
+        indexString[0] = (currentIndex / 256) % 256;
+        indexString[1] = currentIndex % 256;
+        uint value = work_ram[currentIndex];
+        
+        NSString *message = [NSString stringWithFormat:@"tile/%02X%02X/%02X",
+                             indexString[0], indexString[1], value];
+        
+        [networkManager SendMessage:message WithHeader:@"track"];
+        
+        trackerIndex ++;
+        if (trackerIndex > 0x0FFF) {
+            trackerIndex = 0x0000;
+        }
+//    }
 }
 
 void CheckForRamChanges()

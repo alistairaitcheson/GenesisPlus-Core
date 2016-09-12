@@ -38,6 +38,7 @@ void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint which
 void WriteToLog(char string[]);
 void SendNetworkEvent(char str[]);
 uint ValueAtLocation(uint location, uint type);
+void LoadFromBackup();
 
 +(NSString*)PathString;
 +(void)WriteToLog:(NSString*)string;

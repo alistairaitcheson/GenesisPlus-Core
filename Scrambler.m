@@ -141,6 +141,12 @@
                 continue;
             }
             
+            if ([param[@"action"] isEqualToString:@"rewind"])
+            {
+                LoadFromBackup();
+                continue;
+            }
+            
             if (param[@"name"] && param[@"only"])
             {
                 NSString *idString = param[@"name"];
@@ -211,6 +217,7 @@
                 {
                     [self ReverseLastEditInHistory:whichType];
                 }
+                
                 
                 if ([param[@"edit"] isEqualToString:@"track"])
                 {
