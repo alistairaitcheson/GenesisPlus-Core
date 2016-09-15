@@ -1703,22 +1703,21 @@ void RAMCheatUpdate(void)
 
 void RunTracker()
 {
-//    for (int i = 0; i < 1000; i++)
+//    if (rand() % 100 == 1)
 //    {
-        uint currentIndex = trackerIndex + 0x8000;
-        uint indexString[2];
-        indexString[0] = (currentIndex / 256) % 256;
-        indexString[1] = currentIndex % 256;
-        uint value = work_ram[currentIndex];
+        uint startIndex = 0x8000 + (trackerIndex * 0x100);
+        NSString *message = [NSString stringWithFormat:@"line/%02X/", startIndex / 0x100];
         
-        NSString *message = [NSString stringWithFormat:@"tile/%02X%02X/%02X",
-                             indexString[0], indexString[1], value];
-        
+        //uint byteString[0x100];
+        for (uint i = 0; i < 0x100; i++) {
+            message = [message stringByAppendingString:[NSString stringWithFormat:@"%02X", work_ram[startIndex + i]]];
+        }
+            
         [networkManager SendMessage:message WithHeader:@"track"];
         
         trackerIndex ++;
-        if (trackerIndex > 0x0FFF) {
-            trackerIndex = 0x0000;
+        if (trackerIndex > 0x0F) {
+            trackerIndex = 0x00;
         }
 //    }
 }
