@@ -111,6 +111,7 @@ static NSFileManager *fileManager;
 static NSFileHandle *logHandler;
 
 static uint trackerIndex = 0;
+static uint liveCounter = 0;
 
 typedef NS_ENUM(NSInteger, MultiTapType)
 {
@@ -1696,30 +1697,52 @@ void RAMCheatUpdate(void)
         }
 //    });
     
-    RunTracker();
+    if (liveCounter % 2 == 0)
+    {
+        RunTracker();
+    }
+    else
+    {
+        TrackPosition();
+    }
     
     ManageBackup();
+    
+    liveCounter++;
 }
 
 void RunTracker()
 {
-//    if (rand() % 100 == 1)
-//    {
-        uint startIndex = 0x8000 + (trackerIndex * 0x100);
-        NSString *message = [NSString stringWithFormat:@"line/%02X/", startIndex / 0x100];
+    uint startIndex = 0x8000 + (trackerIndex * 0x100);
+    NSString *message = [NSString stringWithFormat:@"line/%02X/", startIndex / 0x100];
+    
+    //uint byteString[0x100];
+    for (uint i = 0; i < 0x100; i++) {
+        message = [message stringByAppendingString:[NSString stringWithFormat:@"%02X", work_ram[startIndex + i]]];
+    }
         
-        //uint byteString[0x100];
-        for (uint i = 0; i < 0x100; i++) {
-            message = [message stringByAppendingString:[NSString stringWithFormat:@"%02X", work_ram[startIndex + i]]];
-        }
-            
-        [networkManager SendMessage:message WithHeader:@"track"];
-        
-        trackerIndex ++;
-        if (trackerIndex > 0x0F) {
-            trackerIndex = 0x00;
-        }
-//    }
+    [networkManager SendMessage:message WithHeader:@"track"];
+    
+    trackerIndex ++;
+    if (trackerIndex > 0x0F) {
+        trackerIndex = 0x00;
+    }
+}
+
+void TrackPosition()
+{
+    NSString *message = @"pos/";
+    
+    for (uint i = 0xB008; i <= 0xB00B; i++) {
+        message = [message stringByAppendingString:[NSString stringWithFormat:@"%02X", work_ram[i]]];
+    }
+    message = [message stringByAppendingString:@"/"];
+    
+    for (uint i = 0xB00C; i <= 0xB00F; i++) {
+        message = [message stringByAppendingString:[NSString stringWithFormat:@"%02X", work_ram[i]]];
+    }
+
+    [networkManager SendMessage:message WithHeader:@"track"];
 }
 
 void CheckForRamChanges()
@@ -1765,7 +1788,7 @@ void SetByteOnMem(uint whichByte, uint newValue, uint whichMem)
 //    });
 }
 
-void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool hide)
+void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool hide, bool flagOnNetwork, char networkFlag[])
 {
     if (min > max || minV > maxV){
         WriteToLog("Cannot scramble as start > end or min > max");
@@ -1785,6 +1808,10 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
             {
                 lastWorkRam[target] = work_ram[target];
             }
+            if (flagOnNetwork)
+            {
+                FlagByteToNetwork(target, value, networkFlag);
+            }
         }
         if (whichMem == 1){
     //        if (record) [scrambler RegisterInHistory_Addr:target Was:vdp_read_byte(target) Became:value OnMem:whichMem];
@@ -1799,6 +1826,17 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
             cart.rom[target % cart.romsize] = value;
         }
 //    });
+}
+
+void FlagByteToNetwork(uint location, uint value, char handle[])
+{
+    NSString *message = [NSString stringWithFormat:@"%@/%04X/%02X",
+                         [NSString stringWithCString:handle
+                                            encoding:NSASCIIStringEncoding],
+                         location, value];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [networkManager SendMessage:message WithHeader:@"track"];
+    });
 }
 
 void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound, bool subtract, bool hide)

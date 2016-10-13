@@ -180,7 +180,8 @@
                 
                 bool hide = false;
                 if (param[@"hide"]) hide = true;
-                                                                
+                
+                bool flagOnNetwork = (param[@"flag"] != nil);
 
                 if ([param[@"edit"] isEqualToString:@"scramble" ]) {
                     ScrambleByteWithRange(indexStart,
@@ -189,7 +190,9 @@
                                           [self uIntFromNSString:param[@"max"]],
                                           whichType,
                                           true,
-                                          hide);
+                                          hide,
+                                          flagOnNetwork,
+                                          (char*)[param[@"flag"] UTF8String]);
                 }
 
                 bool isSubtract = [param[@"edit"] isEqualToString:@"subtract" ];

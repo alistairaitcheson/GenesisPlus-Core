@@ -33,7 +33,7 @@ OE_EXPORTED_CLASS
 @interface GenPlusGameCore : OEGameCore
 
 void SetByteOnMem(uint whichByte, uint newValue, uint whichMem);
-void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool hide);
+void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool hide, bool flagOnNetwork, char networkFlag[]);
 void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound, bool subtract, bool hide);
 void WriteToLog(char string[]);
 void SendNetworkEvent(char str[]);

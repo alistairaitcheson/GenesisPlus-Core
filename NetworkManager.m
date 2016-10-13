@@ -127,7 +127,7 @@
 -(void)SendMessage:(NSString*)message WithHeader:(NSString*)header
 {
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Caching message to write: %@>%@", header, message]];
-    NSString *response  = [NSString stringWithFormat:@"%@>%@>%@", header, message, [self timeStampAsNumber]];
+    NSString *response  = [NSString stringWithFormat:@"%@>%@>%@\n", header, message, [self timeStampAsNumber]];
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"   response: %@", response]];
     NSData *data = [[NSData alloc] initWithData:[response dataUsingEncoding:NSASCIIStringEncoding]];
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"   data length: %i", (int)[data length]]];
