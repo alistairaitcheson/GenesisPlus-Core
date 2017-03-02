@@ -600,13 +600,21 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
 
 -(void)SendButtonPress:(NSString*)msg
 {
+    int playerIndex = 1;
     OEGenesisButton button = INPUT_A;
     NSArray *components = [msg componentsSeparatedByString:@"_"];
-    NSString *buttonID = components[0];
+    NSString *buttonID = [components[0] lowercaseString];
+    
     BOOL pressed = NO;
     if ([components count] > 1){
         if ([[components[1] lowercaseString] isEqualToString:@"down"]){
             pressed = YES;
+        }
+    }
+    
+    if ([components count] > 2){
+        if ([[components[2] lowercaseString] isEqualToString:@"2"]){
+            playerIndex = 2;
         }
     }
     
@@ -622,19 +630,23 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
                                 @(8), @"y",
                                 @(9), @"z",
                                 @(0), @"up",
+                                @(0), @"u",
                                 @(1), @"down",
+                                @(1), @"d",
                                 @(2), @"left",
+                                @(2), @"l",
                                 @(3), @"right",
+                                @(3), @"r",
                                 @(10), @"start",
                                 nil];
     button = (OEGenesisButton)[buttonDict[buttonID] intValue];
     
     if (pressed) {
-        [self didPushGenesisButton:button forPlayer:1];
+        [self didPushGenesisButton:button forPlayer:playerIndex];
     }
     else
     {
-        [self didReleaseGenesisButton:button forPlayer:1];
+        [self didReleaseGenesisButton:button forPlayer:playerIndex];
     }
 }
 
