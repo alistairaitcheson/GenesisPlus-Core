@@ -542,6 +542,10 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     if (GenesisMap[button] == INPUT_A) buttonStr = @"a";
     if (GenesisMap[button] == INPUT_B) buttonStr = @"b";
     if (GenesisMap[button] == INPUT_C) buttonStr = @"c";
+    if (GenesisMap[button] == INPUT_UP) buttonStr = @"up";
+    if (GenesisMap[button] == INPUT_DOWN) buttonStr = @"down";
+    if (GenesisMap[button] == INPUT_LEFT) buttonStr = @"left";
+    if (GenesisMap[button] == INPUT_RIGHT) buttonStr = @"right";
     if (GenesisMap[button] == INPUT_START) buttonStr = @"start";
     if (GenesisMap[button] == INPUT_MODE) buttonStr = @"mode";
 //    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
@@ -551,21 +555,23 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
 //    char str[80];
 //    sprintf(str, "Should I activate scramble? %d (seeking %d)", (int)GenesisMap[button], (int)INPUT_A);
 //    WriteToLog(str);
-    if (GenesisMap[button] == INPUT_X) {
-//        WriteToLog("Activating scramble");
-//        shouldScramble = true;
-    }
-    if (GenesisMap[button] == INPUT_Y) {
-        [networkManager Close];
-        networkManager = [[NetworkManager alloc] init];
-        [networkManager SendMessage:networkUserId
-                         WithHeader:@"iam"];
-//        StoreWorkRAM();
-//        StoreVRAM();
-    }
-    if (GenesisMap[button] == INPUT_Z) {
-        LoadFromBackup();
-    }
+//    if (GenesisMap[button] == INPUT_X) {
+////        WriteToLog("Activating scramble");
+////        shouldScramble = true;
+//    }
+//    if (GenesisMap[button] == INPUT_Y) {
+//        [networkManager Close];
+//        networkManager = [[NetworkManager alloc] init];
+//        [networkManager SendMessage:networkUserId
+//                         WithHeader:@"iam"];
+////        StoreWorkRAM();
+////        StoreVRAM();
+//    }
+//    if (GenesisMap[button] == INPUT_Z) {
+//        LoadFromBackup();
+//    }
+//    
+    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"PUSHED: %@", buttonStr]];
 }
 
 - (oneway void)didReleaseGenesisButton:(OEGenesisButton)button forPlayer:(NSUInteger)player;
@@ -585,6 +591,50 @@ const int GenesisMap[] = {INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_A
     if (GenesisMap[button] == INPUT_X) {
 //        WriteToLog("Deactivating scramble");
 //        shouldScramble = false;
+    }
+
+        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"RELEASED: %i", (int)button]];
+
+    
+}
+
+-(void)SendButtonPress:(NSString*)msg
+{
+    OEGenesisButton button = INPUT_A;
+    NSArray *components = [msg componentsSeparatedByString:@"_"];
+    NSString *buttonID = components[0];
+    BOOL pressed = NO;
+    if ([components count] > 1){
+        if ([[components[1] lowercaseString] isEqualToString:@"down"]){
+            pressed = YES;
+        }
+    }
+    
+    NSString *logMsg = [NSString stringWithFormat:@"Press msg: %@, ID:%@, Press:%@", msg, buttonID, (pressed)? @"YES" : @"NO"];
+    [GenPlusGameCore WriteToLog:logMsg];
+    
+    NSArray *indexedButtons = [NSArray arrayWithObjects:@"a", @"b", @"c", @"x", @"y", @"z", @"up", @"down", @"left", @"right", @"start", nil];
+    NSDictionary *buttonDict = [NSDictionary dictionaryWithObjectsAndKeys:
+                                @(4), @"a",
+                                @(5), @"b",
+                                @(6), @"c",
+                                @(7), @"x",
+                                @(8), @"y",
+                                @(9), @"z",
+                                @(0), @"up",
+                                @(1), @"down",
+                                @(2), @"left",
+                                @(3), @"right",
+                                @(10), @"start",
+                                nil];
+    button = (OEGenesisButton)[buttonDict[buttonID] intValue];
+    
+    if (pressed) {
+        [self didPushGenesisButton:button forPlayer:1];
+    }
+    else
+    {
+        [self didReleaseGenesisButton:button forPlayer:1];
     }
 }
 
@@ -1673,9 +1723,10 @@ void RAMCheatUpdate(void)
                 NSString *type = components[1];
                 NSString *msg = components[2];
                 NSString *timeStamp = components[3];
-                if ([timeStamp intValue] < [[networkManager timeStampAsNumber] intValue])
+                if ([timeStamp intValue] < [[networkManager timeStampAsNumber] intValue] && ![timeStamp hasPrefix:@"timeless"])
                 {
-                    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Will not action message sent prior to start: %@", myMessage]];
+                    [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Will not action message sent prior to start: %@ (start: %i, timestamp: %@)", myMessage,
+                                                 [[networkManager timeStampAsNumber] intValue], timeStamp]];
                     continue;
                 }
                 
@@ -1683,6 +1734,10 @@ void RAMCheatUpdate(void)
                     if ([type isEqualToString:@"scramble"]) {
                         [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Actioning scramble (%@) sent by %@", msg, sender]];
                         [scrambler ActivateOnCondition:[NSString stringWithFormat:@"network_%@", msg]];
+                    }
+                    if ([type isEqualToString:@"controller"]){
+                        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Actioning button (%@) sent by %@", msg, sender]];
+                        [_current SendButtonPress:msg];
                     }
                 }
                 else
@@ -1697,19 +1752,26 @@ void RAMCheatUpdate(void)
         }
 //    });
     
-    if (liveCounter % 2 == 0)
+    if ([networkManager allowTracking] && [[networkManager trackVars] count] > 0)
     {
-        RunTracker();
-    }
-    else
-    {
-        TrackPosition();
+        int tempCounter = liveCounter % [[networkManager trackVars] count];
+        NSString *tempVar = [[networkManager trackVars] objectAtIndex:tempCounter];
+        
+        if ([tempVar isEqualToString:@"stage"])
+        {
+            RunTracker();
+        }
+        else if ([tempVar isEqualToString:@"pos"])
+        {
+            TrackPosition();
+        }
     }
     
     ManageBackup();
     
     liveCounter++;
 }
+    
 
 void RunTracker()
 {
@@ -1828,15 +1890,34 @@ void ScrambleByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichM
 //    });
 }
 
+void ReportByteAtLocation(uint location, char handle[])
+{
+    if ([[networkManager trackVars] containsObject:@"edits"])
+    {
+        uint value = work_ram[location];
+        
+        NSString *message = [NSString stringWithFormat:@"%@/%04X/%02X",
+                             [NSString stringWithCString:handle
+                                                encoding:NSASCIIStringEncoding],
+                             location, value];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [networkManager SendMessage:message WithHeader:@"track"];
+        });
+    }
+}
+
 void FlagByteToNetwork(uint location, uint value, char handle[])
 {
-    NSString *message = [NSString stringWithFormat:@"%@/%04X/%02X",
-                         [NSString stringWithCString:handle
-                                            encoding:NSASCIIStringEncoding],
-                         location, value];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [networkManager SendMessage:message WithHeader:@"track"];
-    });
+    if ([[networkManager trackVars] containsObject:@"edits"])
+    {
+        NSString *message = [NSString stringWithFormat:@"%@/%04X/%02X",
+                             [NSString stringWithCString:handle
+                                                encoding:NSASCIIStringEncoding],
+                             location, value];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [networkManager SendMessage:message WithHeader:@"track"];
+        });
+    }
 }
 
 void IncrementByteWithRange(uint min, uint max, uint minV, uint maxV, uint whichMem, bool record, bool useBounds, uint lowBound, uint highBound, bool subtract, bool hide)

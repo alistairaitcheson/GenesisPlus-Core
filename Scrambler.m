@@ -97,8 +97,23 @@
     return dict;
 }
 
--(void)ActivateOnCondition:(NSString*)condition
+-(void)ActivateOnCondition:(NSString*)sourceCondition
 {
+    NSString *condition = sourceCondition;
+    NSArray *conditionVars = [condition componentsSeparatedByString:@","];
+    NSString *extraVar = nil;
+    uint extraVarAsNumber = 0;
+    if ([conditionVars count] > 1)
+    {
+        condition = [conditionVars objectAtIndex:0];
+        extraVar = [conditionVars objectAtIndex:1];
+        NSScanner *scanner = [NSScanner scannerWithString:extraVar];
+        uint result;
+        [scanner scanHexInt:&result];
+        extraVarAsNumber = result;
+//        [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Interpreted: %@ --> %i", extraVar, extraVarAsNumber]];
+    }
+    
     for (NSDictionary *param in self.parameters) {
         BOOL canPerform = [param[@"trigger"] isEqualToString:condition];
         if ([condition hasPrefix:@"timer_"] && [param[@"trigger"] hasPrefix:@"timer_"])
@@ -147,6 +162,18 @@
                 continue;
             }
             
+            if (param[@"report"])
+            {
+                NSArray *underscoreComponents = [condition componentsSeparatedByString:@"_"];
+                if ([underscoreComponents count] > 1)
+                {
+                    NSString *locString = [underscoreComponents objectAtIndex:1];
+                    uint location = [self uIntFromNSString:locString];
+                    ReportByteAtLocation(location, (char*)[param[@"report"] UTF8String]);
+                }
+                continue;
+            }
+            
             if (param[@"name"] && param[@"only"])
             {
                 NSString *idString = param[@"name"];
@@ -178,6 +205,16 @@
                 indexStart += offset;
                 indexEnd += offset;
                 
+                uint minVal = [self uIntFromNSString:param[@"min"]];
+                uint maxVal = [self uIntFromNSString:param[@"max"]];
+                
+                if (extraVar)
+                {
+                    minVal = extraVarAsNumber;
+                    maxVal = extraVarAsNumber;
+                    [GenPlusGameCore WriteToLog:@"APPLIED SPECIAL MIN/MAX"];
+                }
+                
                 bool hide = false;
                 if (param[@"hide"]) hide = true;
                 
@@ -186,8 +223,8 @@
                 if ([param[@"edit"] isEqualToString:@"scramble" ]) {
                     ScrambleByteWithRange(indexStart,
                                           indexEnd,
-                                          [self uIntFromNSString:param[@"min"]],
-                                          [self uIntFromNSString:param[@"max"]],
+                                          minVal,
+                                          maxVal,
                                           whichType,
                                           true,
                                           hide,
@@ -206,8 +243,8 @@
 
                     IncrementByteWithRange(indexStart,
                                           indexEnd,
-                                          [self uIntFromNSString:param[@"min"]],
-                                          [self uIntFromNSString:param[@"max"]],
+                                          minVal,
+                                          maxVal,
                                           whichType,
                                            true,
                                            useBounds,

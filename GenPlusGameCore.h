@@ -39,8 +39,11 @@ void WriteToLog(char string[]);
 void SendNetworkEvent(char str[]);
 uint ValueAtLocation(uint location, uint type);
 void LoadFromBackup();
+void ReportByteAtLocation(uint location, char handle[]);
 
 +(NSString*)PathString;
 +(void)WriteToLog:(NSString*)string;
+
+-(void)SendButtonPress:(NSString*)msg;
 
 @end

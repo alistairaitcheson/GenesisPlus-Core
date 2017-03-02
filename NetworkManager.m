@@ -16,11 +16,13 @@
     self = [super init];
     if (self) {
         WriteToLog("init NetworkManager");
+        self.trackVars = [NSArray array];
         self.cachedMessages = [NSMutableArray array];
         self.writeCache = [NSMutableArray array];
         self.writeCacheReady = NO;
         
         [self initNetworkCommunication];
+        
         
         self.startTime = [self timeStampAsNumber];
         
@@ -62,6 +64,12 @@
     NSDictionary *params = [self NetworkSettings];
     if(!params)return;
     
+    self.allowTracking = [[params[@"track"] lowercaseString] isEqualToString:@"yes"];
+    if (params[@"trackVars"])
+    {
+        self.trackVars = [params[@"trackVars"] componentsSeparatedByString:@","];
+    }
+
     NSString *host = (params[@"ip"])? params[@"ip"] : @"192.168.0.2";////@"192.168.0.2";//@"localhost";//
     NSString *port = (params[@"port"])? params[@"port"] : @"13000";
     [GenPlusGameCore WriteToLog:[NSString stringWithFormat:@"Connecting to host: %@, on port: %@", host, port]];

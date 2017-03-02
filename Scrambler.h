@@ -21,7 +21,7 @@
 @property uint trackerMax, trackerMin;
 
 -(void)UpdateDefinitions;
--(void)ActivateOnCondition:(NSString*)condition;
+-(void)ActivateOnCondition:(NSString*)sourceCondition;
 -(uint)uIntFromNSString:(NSString*)string;
 -(void)RegisterInHistory_Addr:(uint)addr Was:(uint)was Became:(uint)became OnMem:(int)onMem;
 -(void)RequestDefsFromBackground;
